@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Country News</string>
+    <string name="title_activity_main">Country News</string>
+    <string name="package_name">com.example.countrynews</string>
+    <string name="custom_url_scheme">com.example.countrynews</string>
+</resources>
