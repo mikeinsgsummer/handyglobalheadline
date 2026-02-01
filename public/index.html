@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handy Global Headlines - Premium News</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="source-selector">
+            <select id="source-dropdown">
+                <option value="google">Google Feed</option>
+                <option value="bing">Bing Feed</option>
+                <option value="bbc">BBC Feed</option>
+            </select>
+        </div>
+        <header>
+            <div class="logo">
+                <span class="globe-icon">🌍</span>
+                <h1>Handy Global Headlines</h1>
+            </div>
+            <p class="subtitle">Your daily source for international news</p>
+        </header>
+
+        <main>
+            <section class="controls">
+                <div class="input-group">
+                    <label for="country-select">Country/State</label>
+                    <div class="select-wrapper">
+                        <select id="country-select" disabled>
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="language-select">Read in Language</label>
+                    <div class="select-wrapper">
+                        <select id="language-select">
+                            <option value="original" selected>Original Language</option>
+                            <option value="en">English</option>
+                            <option value="es">Spanish (Español)</option>
+                            <option value="fr">French (Français)</option>
+                            <option value="de">German (Deutsch)</option>
+                            <option value="it">Italian (Italiano)</option>
+                            <option value="pt">Portuguese (Português)</option>
+                            <option value="zh-CN">Chinese (Simplified)</option>
+                            <option value="ja">Japanese (日本語)</option>
+                            <option value="ko">Korean (한국어)</option>
+                            <option value="ru">Russian (Русский)</option>
+                            <option value="ar">Arabic (العربية)</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section id="news-container" class="news-feed">
+                <div class="empty-state">
+                    <div class="icon">📰</div>
+                    <h3>Welcome</h3>
+                    <p>Select a region above to start reading.</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Handy Global Headlines</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
