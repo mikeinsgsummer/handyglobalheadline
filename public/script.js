@@ -61,7 +61,6 @@ const COUNTRY_LANGUAGES = {
     'za': { lang: 'en', name: 'English' }
 };
 
-const SUPPORTED_CODES = new Set(Object.keys(COUNTRY_LANGUAGES));
 const COUNTRY_NAMES = {}; // Map code -> name for Bing search
 
 // Initialize
@@ -118,11 +117,11 @@ async function fetchCountries() {
         const data = await response.json();
 
         const countries = data
-            .filter(country => SUPPORTED_CODES.has(country.cca2.toLowerCase()))
             .sort((a, b) => a.name.common.localeCompare(b.name.common));
 
         countrySelect.innerHTML = '<option value="">Select a country...</option>';
         countries.forEach(country => {
+            if (!country.cca2) return;
             const code = country.cca2.toLowerCase();
             const name = country.name.common;
             COUNTRY_NAMES[code] = name;
@@ -137,7 +136,7 @@ async function fetchCountries() {
 
         let defaultCountry = 'us';
         const detected = await detectUserCountry();
-        if (detected && SUPPORTED_CODES.has(detected)) {
+        if (detected) {
             defaultCountry = detected;
         }
 
@@ -257,9 +256,13 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
     let articles = [];
     let fetchError = null;
 
-    // 1. Try Google News with 2s timeout
+    // 1. Try Google News with 2s timeout (only if we have a config for it)
     try {
         const info = COUNTRY_LANGUAGES[countryCode];
+        if (!info && !forcedSource) {
+            throw new Error("No Google News config for this region");
+        }
+
         const cc = countryCode.toUpperCase();
         let hl = info.lang;
         let gl = cc;
@@ -342,7 +345,7 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
         return;
     }
 
-    const countryLang = COUNTRY_LANGUAGES[countryCode].lang;
+    const countryLang = (COUNTRY_LANGUAGES[countryCode] && COUNTRY_LANGUAGES[countryCode].lang) || 'en';
 
     if (targetLang !== 'original') {
         // User explicitly chose a language, translate everything
