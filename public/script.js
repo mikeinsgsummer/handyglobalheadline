@@ -57,6 +57,7 @@ const COUNTRY_LANGUAGES = {
     'ua': { lang: 'uk', name: 'Ukrainian' },
     'us': { lang: 'en', name: 'English' },
     've': { lang: 'es', name: 'Spanish' },
+    'vn': { lang: 'vi', name: 'Vietnamese' },
     'za': { lang: 'en', name: 'English' }
 };
 
