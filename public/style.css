@@ -24,7 +24,9 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    padding: 2rem;
+    padding: 1rem;
+    padding-top: calc(1rem + env(safe-area-inset-top));
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 }
 
 .app-container {
@@ -35,9 +37,10 @@ body {
 
 /* Feed Source Selector */
 .source-selector {
-    position: absolute;
-    top: -1.25rem;
-    left: 0;
+    position: relative;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
     z-index: 100;
 }
 
@@ -78,10 +81,7 @@ body {
 
 @media (max-width: 640px) {
     .source-selector {
-        position: static;
-        text-align: center;
-        margin: 0 auto 1.5rem auto;
-        width: fit-content;
+        margin-bottom: 1rem;
     }
 }
 
@@ -304,6 +304,7 @@ footer {
 @media (max-width: 640px) {
     body {
         padding: 1rem;
+        padding-top: calc(1.5rem + env(safe-area-inset-top));
         padding-bottom: calc(1rem + env(safe-area-inset-bottom));
     }
 
