@@ -477,7 +477,7 @@ function showSavedArticles() {
                 <button onclick="refreshNews()" class="icon-btn-text">← Back to Home</button>
             </div>
             <div class="banner-title">Saved Articles</div>
-            <button onclick="deleteAllSavedArticles()" class="icon-btn-text delete-all" title="Delete All">🗑️ Clear All</button>
+            <button onclick="deleteAllSavedArticles()" class="icon-btn-text delete-all" title="Delete All">🗑️ Clear</button>
         `;
     newsContainer.prepend(backBanner);
 }
