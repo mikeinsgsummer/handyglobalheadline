@@ -38,24 +38,20 @@ body {
 /* Feed Source Selector */
 .source-selector {
     position: relative;
-    margin-bottom: 1.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* Added for alignment */
     z-index: 100;
 }
 
-.source-selector.centered {
+.source-selector.compact {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
     justify-content: center;
-    margin: -1rem auto 2.5rem auto;
-    background: var(--card-bg);
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-    width: fit-content;
+    margin-top: 0.5rem;
+    width: 100%;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
 }
+
 
 .saved-view-active .source-selector {
     display: none !important;
@@ -177,13 +173,13 @@ header {
 
 .controls {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     max-width: 600px;
-    margin: 0 auto 2rem auto;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    margin: 0 auto 1.5rem auto;
+    gap: 1.25rem;
     background: var(--card-bg);
-    padding: 1.5rem;
+    padding: 1.25rem;
     border-radius: 1rem;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
@@ -351,7 +347,11 @@ footer {
     }
 
     header {
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .header-minimal .globe-icon {
+        font-size: 1.8rem;
     }
 
     h1 {
@@ -359,19 +359,38 @@ footer {
     }
 
     .subtitle {
-        font-size: 1rem;
+        font-size: 0.875rem;
     }
 
     .controls {
         flex-direction: row;
-        /* Enforced single row */
-        gap: 0.75rem;
-        padding: 1rem;
+        /* Enforced single row for selects */
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.75rem;
         margin-bottom: 1rem;
     }
 
     .input-group {
-        width: 100%;
+        width: calc(50% - 0.25rem);
+        /* Share row space */
+        gap: 0.25rem;
+    }
+
+    .input-group label {
+        font-size: 0.75rem;
+    }
+
+    input,
+    select {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .source-selector.compact {
+        margin-top: 0.25rem;
+        padding-top: 0.5rem;
+        gap: 1rem;
     }
 
     .news-title {
