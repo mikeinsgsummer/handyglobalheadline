@@ -179,13 +179,23 @@ function setReaderMode(reader) {
         }
     });
 
-    // Requirement 2: Hide translation select in Original mode
+    // Requirement 2: Hide translation select and Save icon in Original mode
     const readerLangSelect = document.getElementById('reader-language-select');
+    const saveOfflineBtn = document.getElementById('save-offline');
+
     if (readerLangSelect) {
         if (isReaderMode) {
             readerLangSelect.classList.remove('hidden');
         } else {
             readerLangSelect.classList.add('hidden');
+        }
+    }
+
+    if (saveOfflineBtn) {
+        if (isReaderMode) {
+            saveOfflineBtn.classList.remove('hidden');
+        } else {
+            saveOfflineBtn.classList.add('hidden');
         }
     }
 
@@ -213,6 +223,8 @@ async function openArticle(article) {
             }
         });
         if (readerLangSelect) readerLangSelect.classList.remove('hidden');
+        const saveBtn = document.getElementById('save-offline');
+        if (saveBtn) saveBtn.classList.remove('hidden');
     }
 
     const targetLang = readerLangSelect ? readerLangSelect.value : 'original';
@@ -267,8 +279,8 @@ async function openArticle(article) {
             console.error("Iframe Load Error:", error);
             content.innerHTML = `
                 <div class="error-state">
-                    <h3>Could not load original website</h3>
-                    <p>The website is blocking embedded views. Try Reader Mode or open in browser.</p>
+                    <h3>Contents pending to be loaded</h3>
+                    <p>Access it in Web is advised.</p>
                     <div class="error-actions">
                         <button onclick="setReaderMode(true)" class="text-btn">Try Reader Mode</button>
                         <a href="${article.link}" target="_blank" class="text-btn primary">Open in Browser</a>
@@ -337,14 +349,14 @@ async function openArticle(article) {
     } catch (error) {
         console.error("Reader Error:", error);
         content.innerHTML = `
-            <div class="error-state">
-                <h3>Could not load article content</h3>
-                <p>This article might be protected or the source is unavailable.</p>
-                <div class="error-actions">
-                    <button onclick="toggleReaderMode()" class="text-btn">Try Original View</button>
-                    <a href="${article.link}" target="_blank" class="text-btn primary">Open in Browser</a>
-                </div>
+        <div class="error-state">
+            <h3>Contents pending to be loaded</h3>
+            <p>Access it in Web is advised.</p>
+            <div class="error-actions">
+                <button onclick="toggleReaderMode()" class="text-btn">Try Original View</button>
+                <a href="${article.link}" target="_blank" class="text-btn primary">Open in Browser</a>
             </div>
+        </div>
         `;
     }
 }
