@@ -46,6 +46,17 @@ body {
     z-index: 100;
 }
 
+.source-selector.centered {
+    justify-content: center;
+    margin: -1rem auto 2.5rem auto;
+    background: var(--card-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    width: fit-content;
+}
+
 .saved-view-active .source-selector {
     display: none !important;
 }
@@ -352,10 +363,11 @@ footer {
     }
 
     .controls {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
+        flex-direction: row;
+        /* Enforced single row */
+        gap: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
     }
 
     .input-group {
@@ -880,6 +892,7 @@ mark.news-highlight {
 .saved-view-active header {
     margin-bottom: 1rem;
 }
+
 /* Settings Modal */
 .settings-container {
     background: var(--bg-color);

@@ -14,10 +14,6 @@
 
 <body>
     <div class="app-container">
-        <div class="source-selector">
-            <button id="saved-articles-btn" class="icon-btn" title="Saved Articles">🔖</button>
-            <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
-        </div>
         <header>
             <div class="header-minimal">
                 <span class="globe-icon">🌍</span>
@@ -37,7 +33,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="language-select">Read in Language</label>
+                    <label for="language-select">Language</label>
                     <div class="select-wrapper">
                         <select id="language-select">
                             <option value="original" selected>Original Language</option>
@@ -56,6 +52,11 @@
                     </div>
                 </div>
             </section>
+
+            <div class="source-selector centered">
+                <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+                <button id="saved-articles-btn" class="icon-btn" title="Saved Articles">🔖</button>
+            </div>
 
             <section id="news-container" class="news-feed">
                 <div class="empty-state">
