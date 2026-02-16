@@ -899,26 +899,44 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
     try {
         if (!countryCode && !forcedSource) {
             articles = await fetchGlobalNews();
-        } else if (forcedSource === 'google' || (!forcedSource && countryCode)) {
-            try {
-                const info = COUNTRY_LANGUAGES[countryCode];
-                if (!info) throw new Error("No regional config");
-                const cc = countryCode.toUpperCase();
-                let hl = info.lang || 'en';
-                let ceid = `${cc}:${hl}`;
-                const rssUrl = `https://news.google.com/rss?gl=${cc}&hl=${hl}&ceid=${ceid}`;
-                articles = await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 5000);
-                updateSourceDropdown('google');
-            } catch (e) {
-                console.warn("Regional Google News failed, falling back to Global feeds...");
+        } else {
+            // Priority sequence or forced selection
+            const sequence = forcedSource ? [forcedSource] : ['bing', 'bbc', 'google'];
+            let success = false;
+
+            for (const source of sequence) {
+                try {
+                    if (source === 'bing') {
+                        articles = await fetchBingNews(countryCode);
+                        updateSourceDropdown('bing');
+                        success = true;
+                    } else if (source === 'bbc') {
+                        articles = await fetchBBCNews(countryCode);
+                        updateSourceDropdown('bbc');
+                        success = true;
+                    } else if (source === 'google' || (source === 'google_regional')) {
+                        const info = COUNTRY_LANGUAGES[countryCode];
+                        if (info) {
+                            const cc = countryCode.toUpperCase();
+                            let hl = info.lang || 'en';
+                            let ceid = `${cc}:${hl}`;
+                            const rssUrl = `https://news.google.com/rss?gl=${cc}&hl=${hl}&ceid=${ceid}`;
+                            articles = await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 5000);
+                            updateSourceDropdown('google');
+                            success = true;
+                        }
+                    }
+                    if (success && articles.length > 0) break;
+                } catch (e) {
+                    console.warn(`Source ${source} failed, trying next in sequence...`);
+                }
+            }
+
+            // Final fallback to global if nothing worked
+            if (!success || articles.length === 0) {
+                console.warn("All regional sources failed, falling back to Global Racing...");
                 articles = await fetchGlobalNews();
             }
-        } else if (forcedSource === 'bing') {
-            articles = await fetchBingNews(countryCode);
-            updateSourceDropdown('bing');
-        } else if (forcedSource === 'bbc') {
-            articles = await fetchBBCNews(countryCode);
-            updateSourceDropdown('bbc');
         }
 
         if (articles.length === 0) {
