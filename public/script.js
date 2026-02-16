@@ -512,7 +512,7 @@ function refreshNews() {
 async function detectUserCountry() {
     try {
         // Primary Attempt: ipapi.co
-        const response = await fetch('https://ipapi.co/json/');
+        const response = await fetchWithTimeout('https://ipapi.co/json/', { timeout: 3000 });
         const data = await response.json();
         if (data.country_code) return data.country_code.toLowerCase();
     } catch (e) {
@@ -523,7 +523,7 @@ async function detectUserCountry() {
         // Fallback 1: ip-api.com (HTTP only for free tier, so might fail on HTTPS sites unless proxied)
         // Using AllOrigins as it's already used elsewhere
         const proxyUrl = getProxyUrl('http://ip-api.com/json');
-        const response = await fetch(proxyUrl);
+        const response = await fetchWithTimeout(proxyUrl, { timeout: 3000 });
         const data = await response.json();
         const body = JSON.parse(data.contents);
         if (body.countryCode) return body.countryCode.toLowerCase();
@@ -561,9 +561,6 @@ async function fetchCountries() {
             countrySelect.appendChild(option);
         });
 
-        countrySelect.disabled = false;
-
-        let defaultCountry = 'us';
         const detected = await detectUserCountry();
         if (detected) {
             defaultCountry = detected;
@@ -678,13 +675,41 @@ async function fetchFromRss(feed, timeout = 5000) {
 
 /**
  * Races multiple proxies simultaneously for high-speed RSS fetching.
+ * Uses CapacitorHttp if available to bypass CORS in native app.
  */
-async function fetchRssRacing(targetUrl, timeout = 5000) {
+async function fetchRssRacing(targetUrl, timeout = 7000) {
+    // 1. Try Native CapacitorHttp first if available (bypasses CORS & Proxies)
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+        try {
+            const options = {
+                url: targetUrl,
+                headers: {
+                    'Accept': 'application/xml, text/xml, */*',
+                    'User-Agent': navigator.userAgent
+                },
+                connectTimeout: timeout,
+                readTimeout: timeout
+            };
+            const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
+            if (response && response.data) {
+                const dataStr = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                if (dataStr.includes('<rss') || dataStr.includes('<feed') || (dataStr.includes('<?xml') && dataStr.length > 500)) {
+                    console.log(`[Native RSS Success] Verified RSS for ${targetUrl.slice(0, 15)}`);
+                    return dataStr;
+                } else {
+                    console.warn(`[Native RSS Junk] Received non-RSS content. Falling back...`);
+                }
+            }
+        } catch (e) {
+            console.warn(`[Native RSS Fail] ${e.message}. Trying proxies...`);
+        }
+    }
+
     const proxies = [
-        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
         `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(targetUrl)}`,
-        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}` // Added another proxy
+        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}`
     ];
 
     // Add local proxy if in dev environment
@@ -863,6 +888,7 @@ async function fetchBingNews(countryCode) {
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
         const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
+
         return items.map(item => ({
             title: item.querySelector("title").textContent,
             link: item.querySelector("link").textContent,
