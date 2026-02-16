@@ -17,3 +17,7 @@
 | 2026-02-16 14:40:00 | `23ae06c`        | Hide Save Offline icon when opening articles from the Saved collection             |
 | 2026-02-16 14:50:00 | `1345626`        | Implement App Settings for persistent news source preference (Bing/BBC/Google)      |
 | 2026-02-16 14:55:00 | `e12b24a`        | Streamline Home UI by removing redundant source selection dropdown                  |
+| 2026-02-16 15:30:00 | `9c640eb`        | Refine home screen layout with single-row controls and repositioned buttons         |
+| 2026-02-16 16:00:00 | `8178d98`        | Optimize Home UI for mobile with compact header and unified control card            |
+| 2026-02-16 18:30:00 | `5861e75`        | Implement strict news source fallback sequences (Bing-BBC-Google, etc.)            |
+| 2026-02-16 19:10:00 | `901af46`        | Implement hybrid fetching strategy (Native RSS + Proxy Reader) and fix startup hang |
