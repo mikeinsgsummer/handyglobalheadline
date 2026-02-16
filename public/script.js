@@ -459,8 +459,9 @@ function showSavedArticles() {
         backBanner.className = 'info-banner saved-header';
         backBanner.innerHTML = `
             <div class="banner-left">
-                <button onclick="refreshNews()" class="icon-btn-text">← Back to Feed</button>
+                <button onclick="refreshNews()" class="icon-btn-text">← Back to Home</button>
             </div>
+            <div class="banner-title">Saved Articles</div>
         `;
         newsContainer.prepend(backBanner);
         return;
@@ -473,8 +474,9 @@ function showSavedArticles() {
     backBanner.className = 'info-banner saved-header';
     backBanner.innerHTML = `
             <div class="banner-left">
-                <button onclick="refreshNews()" class="icon-btn-text">← Back to Feed</button>
+                <button onclick="refreshNews()" class="icon-btn-text">← Back to Home</button>
             </div>
+            <div class="banner-title">Saved Articles</div>
             <button onclick="deleteAllSavedArticles()" class="icon-btn-text delete-all" title="Delete All">🗑️ Clear All</button>
         `;
     newsContainer.prepend(backBanner);
@@ -983,11 +985,11 @@ function renderNews(articles, isSavedView = false) {
         card.innerHTML = `
             <div class="news-content">
                 ${isSavedView ? `<button class="card-delete-btn" title="Delete">🗑️</button>` : ''}
-                <div class="news-source">${article.source}</div>
-                <div class="news-title">${article.title}</div>
-                <div class="news-meta">
-                    <span>${date}</span>
+                <div class="news-source">
+                    <span>${article.source}</span>
+                    <span class="news-date">${date}</span>
                 </div>
+                <div class="news-title">${article.title}</div>
             </div>
         `;
 
