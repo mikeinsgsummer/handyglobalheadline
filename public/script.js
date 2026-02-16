@@ -279,10 +279,9 @@ async function openArticle(article) {
             console.error("Iframe Load Error:", error);
             content.innerHTML = `
                 <div class="error-state">
-                    <h3>Contents pending to be loaded</h3>
-                    <p>Access it in Web is advised.</p>
+                    <p>Contents pending to be loaded.</p>
+                    <p><strong>Access it in Web is advised</strong></p>
                     <div class="error-actions">
-                        <button onclick="setReaderMode(true)" class="text-btn">Try Reader Mode</button>
                         <a href="${article.link}" target="_blank" class="text-btn primary">Open in Browser</a>
                     </div>
                 </div>
@@ -350,10 +349,9 @@ async function openArticle(article) {
         console.error("Reader Error:", error);
         content.innerHTML = `
         <div class="error-state">
-            <h3>Contents pending to be loaded</h3>
-            <p>Access it in Web is advised.</p>
+            <p>Contents pending to be loaded.</p>
+            <p><strong>Access it in Web is advised</strong></p>
             <div class="error-actions">
-                <button onclick="toggleReaderMode()" class="text-btn">Try Original View</button>
                 <a href="${article.link}" target="_blank" class="text-btn primary">Open in Browser</a>
             </div>
         </div>
