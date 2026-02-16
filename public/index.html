@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.min.js"></script>
 </head>
 
 <body>
@@ -19,13 +20,13 @@
                 <option value="bing">Bing Feed</option>
                 <option value="bbc">BBC Feed</option>
             </select>
+            <button id="saved-articles-btn" class="icon-btn" title="Saved Articles">🔖</button>
         </div>
         <header>
-            <div class="logo">
+            <div class="header-minimal">
                 <span class="globe-icon">🌍</span>
-                <h1>Handy Global Headlines</h1>
+                <p class="subtitle">News at Your Fingertips</p>
             </div>
-            <p class="subtitle">Your daily source for international news</p>
         </header>
 
         <main>
@@ -71,7 +72,47 @@
 
         <footer>
             <p>&copy; 2026 Handy Global Headlines</p>
+            <p class="creator-credit">By M.ZXD</p>
         </footer>
+    </div>
+
+    <!-- News Reader Overlay -->
+    <div id="reader-overlay" class="reader-overlay hidden">
+        <div class="reader-container">
+            <header class="reader-header">
+                <button id="close-reader" class="icon-btn">✕</button>
+                <div class="reader-controls">
+                    <select id="reader-language-select" class="reader-select">
+                        <option value="original" selected>Original Language</option>
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="pt">Portuguese</option>
+                        <option value="zh-CN">Chinese</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                        <option value="ru">Russian</option>
+                        <option value="ar">Arabic</option>
+                    </select>
+                    <div class="mode-switch" id="reader-mode-switch">
+                        <button class="switch-opt active" data-mode="reader">Reader</button>
+                        <button class="switch-opt" data-mode="original">Original</button>
+                    </div>
+                    <div class="font-controls">
+                        <button id="font-decrease" class="icon-btn" title="Decrease Font">A-</button>
+                        <button id="font-increase" class="icon-btn" title="Increase Font">A+</button>
+                    </div>
+                    <button id="toggle-dark-mode" class="icon-btn" title="Toggle Dark Mode">🌓</button>
+                    <button id="save-offline" class="icon-btn" title="Save Offline">📥</button>
+                    <a id="open-external" target="_blank" class="icon-btn" title="Open in Browser">🔗</a>
+                </div>
+            </header>
+            <div id="reader-content" class="reader-body">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
