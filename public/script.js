@@ -82,17 +82,6 @@ async function init() {
     });
     languageSelect.addEventListener('change', refreshNews);
 
-    // Setup manual source selector
-    const sourceDropdown = document.getElementById('source-dropdown');
-    if (sourceDropdown) {
-        sourceDropdown.addEventListener('change', () => {
-            const country = countrySelect.value;
-            const lang = languageSelect.value;
-            const source = sourceDropdown.value;
-            if (country) fetchNews(country, lang, source);
-        });
-    }
-
     setupReaderHandlers();
     setupSettingsHandlers();
 }
@@ -970,11 +959,9 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
                 try {
                     if (source === 'bing') {
                         articles = await fetchBingNews(countryCode);
-                        updateSourceDropdown('bing');
                         success = true;
                     } else if (source === 'bbc') {
                         articles = await fetchBBCNews(countryCode);
-                        updateSourceDropdown('bbc');
                         success = true;
                     } else if (source === 'google' || (source === 'google_regional')) {
                         const info = COUNTRY_LANGUAGES[countryCode];
@@ -984,7 +971,6 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
                             let ceid = `${cc}:${hl}`;
                             const rssUrl = `https://news.google.com/rss?gl=${cc}&hl=${hl}&ceid=${ceid}`;
                             articles = await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 5000);
-                            updateSourceDropdown('google');
                             success = true;
                         }
                     }
@@ -1101,11 +1087,5 @@ function showEmpty(msg) {
     newsContainer.innerHTML = `<div class="empty-state"><h3>${msg}</h3></div>`;
 }
 
-function updateSourceDropdown(source) {
-    const sourceDropdown = document.getElementById('source-dropdown');
-    if (sourceDropdown && (source === 'google' || source === 'bing' || source === 'bbc')) {
-        sourceDropdown.value = source;
-    }
-}
 
 init();
