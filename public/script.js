@@ -451,6 +451,7 @@ function deleteAllSavedArticles() {
 }
 
 function showSavedArticles() {
+    document.body.classList.add('saved-view-active');
     if (savedArticles.length === 0) {
         showEmpty("You haven't saved any articles yet.");
         // Add a back button even if empty
@@ -494,6 +495,7 @@ function updateLanguageLabel() {
 }
 
 function refreshNews() {
+    document.body.classList.remove('saved-view-active');
     const country = countrySelect.value;
     const lang = languageSelect.value;
     if (country) fetchNews(country, lang);

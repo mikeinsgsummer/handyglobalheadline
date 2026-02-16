@@ -786,3 +786,13 @@ mark.news-highlight {
 .reader-dark .switch-opt:not(.active):hover {
     background: rgba(255, 255, 255, 0.05);
 }
+/* Saved View UI Cleanup */
+.saved-view-active .globe-icon,
+.saved-view-active .subtitle,
+.saved-view-active .controls {
+    display: none !important;
+}
+
+.saved-view-active header {
+    margin-bottom: 1rem;
+}
