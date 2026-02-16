@@ -69,6 +69,7 @@ let readerFontSize = parseInt(localStorage.getItem('readerFontSize')) || 18;
 let readerDarkMode = localStorage.getItem('readerDarkMode') === 'true';
 let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
+let preferredSource = localStorage.getItem('preferredSource') || 'bing';
 
 // Initialize
 async function init() {
@@ -93,6 +94,7 @@ async function init() {
     }
 
     setupReaderHandlers();
+    setupSettingsHandlers();
 }
 
 function setupReaderHandlers() {
@@ -906,6 +908,44 @@ async function fetchBBCNews(countryCode) {
     }
 }
 
+function setupSettingsHandlers() {
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettings = document.getElementById('close-settings');
+    const saveSettings = document.getElementById('save-settings');
+    const sourceRadios = document.getElementsByName('preferred-source');
+
+    if (settingsBtn) {
+        settingsBtn.onclick = () => {
+            // Set radio to current preference
+            sourceRadios.forEach(radio => {
+                if (radio.value === preferredSource) radio.checked = true;
+            });
+            settingsModal.classList.remove('hidden');
+        };
+    }
+
+    if (closeSettings) {
+        closeSettings.onclick = () => settingsModal.classList.add('hidden');
+    }
+
+    if (saveSettings) {
+        saveSettings.onclick = () => {
+            const selected = Array.from(sourceRadios).find(r => r.checked);
+            if (selected) {
+                preferredSource = selected.value;
+                localStorage.setItem('preferredSource', preferredSource);
+            }
+            settingsModal.classList.add('hidden');
+
+            // Refresh if country is selected
+            if (countrySelect && countrySelect.value) {
+                refreshNews();
+            }
+        };
+    }
+}
+
 async function fetchNews(countryCode, targetLang = 'original', forcedSource = null) {
     showLoading();
     let articles = [];
@@ -915,8 +955,15 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
         if (!countryCode && !forcedSource) {
             articles = await fetchGlobalNews();
         } else {
-            // Priority sequence or forced selection
-            const sequence = forcedSource ? [forcedSource] : ['bing', 'bbc', 'google'];
+            // Priority sequence: forced, then preferred, then others
+            let sequence = forcedSource ? [forcedSource] : [preferredSource];
+
+            // Add other sources to the sequence if not already present
+            if (!forcedSource) {
+                const others = ['bing', 'bbc', 'google'].filter(s => s !== preferredSource);
+                sequence = sequence.concat(others);
+            }
+
             let success = false;
 
             for (const source of sequence) {

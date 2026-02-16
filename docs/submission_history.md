@@ -15,3 +15,4 @@
 | 2026-02-16 14:15:00 | `eac6ce7`        | Refine Reader error styling (bold advice) and simplify actions                     |
 | 2026-02-16 14:30:00 | `82eefc7`        | Deploy latest refinements to iOS simulator and verify native build                 |
 | 2026-02-16 14:40:00 | `23ae06c`        | Hide Save Offline icon when opening articles from the Saved collection             |
+| 2026-02-16 14:50:00 | `5daf828`        | Implement App Settings for persistent news source preference (Bing/BBC/Google)      |
