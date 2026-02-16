@@ -608,21 +608,21 @@ async function translateHTML(html, targetLang) {
 }
 
 function getProxyUrl(targetUrl) {
-    const isLocalWeb = window.location.hostname === 'localhost' && window.location.port === '8888';
-    const isNetlify = window.location.hostname.includes('netlify.app') || isLocalWeb;
+    // Check for native mobile environment (Capacitor/Cordova)
+    const isNative = window.location.protocol === 'capacitor:' || window.location.protocol === 'http:' && window.location.hostname === 'localhost' && !window.location.port;
 
-    // Capacitor/Native apps often use capacitor://localhost or similar, 
-    // and don't have access to the local Netlify dev server functions.
-    if (isNetlify) {
+    // For local dev with Netlify CLI
+    const isNetlifyDev = window.location.hostname === 'localhost' && window.location.port === '8888';
+    if (isNetlifyDev) {
         return `/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`;
     }
 
-    // Fallback to public proxy for standard Capacitor/Native builds
+    // Default to the most reliable public proxy for web/native fallback
     return `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 }
 
 async function fetchWithTimeout(resource, options = {}) {
-    const { timeout = 12000 } = options; // Increased default timeout
+    const { timeout = 5000 } = options; // Lowered default timeout for faster failure
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -648,21 +648,66 @@ const HIGH_PRIORITY_FEEDS = [
 ];
 
 async function fetchFromRss(feed, timeout = 5000) {
-    const proxyUrl = getProxyUrl(feed.url);
-    const response = await fetchWithTimeout(proxyUrl, { timeout });
-    if (!response.ok) throw new Error(`Feed ${feed.name} failed`);
+    try {
+        const xmlText = await fetchRssRacing(feed.url, timeout);
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+        const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
 
-    const xmlText = await response.text();
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-    const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
+        return items.map(item => ({
+            title: item.querySelector("title").textContent.trim(),
+            link: item.querySelector("link").textContent,
+            pubDate: item.querySelector("pubDate") ? item.querySelector("pubDate").textContent : new Date().toISOString(),
+            source: feed.source
+        }));
+    } catch (e) {
+        console.error(`Feed ${feed.name} race failed:`, e);
+        throw e;
+    }
+}
 
-    return items.map(item => ({
-        title: item.querySelector("title").textContent.trim(),
-        link: item.querySelector("link").textContent,
-        pubDate: item.querySelector("pubDate") ? item.querySelector("pubDate").textContent : new Date().toISOString(),
-        source: feed.source
-    }));
+/**
+ * Races multiple proxies simultaneously for high-speed RSS fetching.
+ */
+async function fetchRssRacing(targetUrl, timeout = 5000) {
+    const proxies = [
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+        `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(targetUrl)}`,
+        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}` // Added another proxy
+    ];
+
+    // Add local proxy if in dev environment
+    if (window.location.port === '8888') {
+        proxies.unshift(`/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const tryProxy = async (proxyUrl) => {
+        try {
+            const res = await fetch(proxyUrl, { signal: controller.signal });
+            if (!res.ok) throw new Error(`Status ${res.status}`);
+            const text = await res.text();
+            if (!text || text.length < 500) throw new Error("Incomplete RSS");
+            console.log(`[Proxy Win] ${proxyUrl.split('?')[0]}`);
+            return text;
+        } catch (e) {
+            console.warn(`[Proxy Fail] ${proxyUrl.split('?')[0]}: ${e.message}`);
+            throw e;
+        }
+    };
+
+    try {
+        const result = await Promise.any(proxies.map(p => tryProxy(p)));
+        clearTimeout(timeoutId);
+        return result;
+    } catch (e) {
+        clearTimeout(timeoutId);
+        console.error("All RSS racing proxies failed for", targetUrl);
+        throw new Error("All RSS racing proxies failed");
+    }
 }
 
 /**
@@ -802,12 +847,8 @@ async function fetchBingNews(countryCode) {
     try {
         const countryName = COUNTRY_NAMES[countryCode] || countryCode;
         const rssUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(countryName)}+news&format=rss`;
-        const proxyUrl = getProxyUrl(rssUrl);
 
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error("Bing proxy failed");
-
-        const xmlText = await response.text();
+        const xmlText = await fetchRssRacing(rssUrl, 5000);
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -828,12 +869,8 @@ async function fetchBBCNews(countryCode) {
     try {
         const countryName = COUNTRY_NAMES[countryCode] || countryCode;
         const rssUrl = `https://www.bing.com/news/search?q=site:bbc.com+${encodeURIComponent(countryName)}+news&format=rss`;
-        const proxyUrl = getProxyUrl(rssUrl);
 
-        const response = await fetchWithTimeout(proxyUrl, { timeout: 2000 });
-        if (!response.ok) throw new Error("BBC News source failed");
-
-        const xmlText = await response.text();
+        const xmlText = await fetchRssRacing(rssUrl, 5000);
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -855,17 +892,13 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
     let articles = [];
     let fetchError = null;
 
-    // Implementation of priority-based fetching
     try {
-        // If no specific country or forced source, try Global Racing first
         if (!countryCode && !forcedSource) {
             articles = await fetchGlobalNews();
         } else if (forcedSource === 'google' || (!forcedSource && countryCode)) {
-            // Try Google News for regional context first
             try {
                 const info = COUNTRY_LANGUAGES[countryCode];
                 if (!info) throw new Error("No regional config");
-
                 const cc = countryCode.toUpperCase();
                 let hl = info.lang || 'en';
                 let ceid = `${cc}:${hl}`;
@@ -883,36 +916,36 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
             articles = await fetchBBCNews(countryCode);
             updateSourceDropdown('bbc');
         }
-    } catch (error) {
-        console.error("Fetch hierarchy failed:", error);
-        try {
-            // Last resort: try Bing search if everything else failed
-            articles = await fetchBingNews(countryCode || 'world');
-            updateSourceDropdown('bing');
-        } catch (finalError) {
-            fetchError = "Failed to fetch news from all sources. Please check your connection.";
-        }
-    }
 
-    if (fetchError) { showError(fetchError); return; }
-
-    const countryLang = (COUNTRY_LANGUAGES[countryCode] && COUNTRY_LANGUAGES[countryCode].lang) || 'en';
-    if (targetLang !== 'original') {
-        articles = await Promise.all(articles.map(async (art) => {
-            const tTitle = await translateText(art.title, targetLang);
-            return { ...art, title: tTitle };
-        }));
-    } else if (countryLang !== 'en' && countryCode) {
-        articles = await Promise.all(articles.map(async (art) => {
-            // Only translate if title is likely in English but we want the local language
-            if (art.source === 'Bing News' || art.source === 'BBC News' || art.source === 'AP News' || art.source === 'The Guardian') {
-                const tTitle = await translateText(art.title, countryLang);
-                return { ...art, title: tTitle };
+        if (articles.length === 0) {
+            fetchError = "No news headlines found. Please try a different source or region.";
+        } else {
+            const countryLang = (COUNTRY_LANGUAGES[countryCode] && COUNTRY_LANGUAGES[countryCode].lang) || 'en';
+            if (targetLang !== 'original') {
+                articles = await Promise.all(articles.map(async (art) => {
+                    const tTitle = await translateText(art.title, targetLang);
+                    return { ...art, title: tTitle };
+                }));
+            } else if (countryLang !== 'en' && countryCode) {
+                articles = await Promise.all(articles.map(async (art) => {
+                    if (art.source === 'Bing News' || art.source === 'BBC News' || art.source === 'AP News' || art.source === 'The Guardian') {
+                        const tTitle = await translateText(art.title, countryLang);
+                        return { ...art, title: tTitle };
+                    }
+                    return art;
+                }));
             }
-            return art;
-        }));
+            renderNews(articles);
+            return; // Success!
+        }
+    } catch (error) {
+        console.error("Fetch News Critical Failure:", error);
+        fetchError = "Unable to load news headlines. This usually happens when proxies are temporarily over capacity. Please try again in a few seconds.";
     }
-    renderNews(articles);
+
+    if (fetchError) {
+        showError(fetchError);
+    }
 }
 
 function renderNews(articles, isSavedView = false) {
