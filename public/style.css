@@ -473,7 +473,7 @@ footer {
     top: 0;
     z-index: 10;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.5rem;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -481,10 +481,32 @@ footer {
     display: flex;
     gap: 0.5rem;
     align-items: center;
-    flex-wrap: nowrap;
-    /* Keep on one row */
+    flex-wrap: wrap;
+    /* Allowed wrapping for mobile */
     justify-content: flex-end;
     flex: 1;
+    min-width: 0;
+    /* Prevent overflow */
+}
+
+@media (max-width: 600px) {
+    .reader-header {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .reader-controls {
+        justify-content: center;
+        /* Center on mobile for balance */
+        gap: 0.4rem;
+    }
+
+    .reader-select {
+        flex: 1 1 100%;
+        /* Full width on very small screens if needed */
+        max-width: none;
+        margin-bottom: 0.25rem;
+    }
 }
 
 .font-controls {
