@@ -239,14 +239,17 @@ async function openArticle(article) {
 
     // For saved articles, we always use Reader Mode and hide the switch
     // Check for .content (standard for saved) or .savedAt (extra safety)
+    const saveBtn = document.getElementById('save-offline');
     if (article.content || article.savedAt) {
         if (modeSwitch) modeSwitch.style.display = 'none';
+        if (saveBtn) saveBtn.classList.add('hidden');
         if (!isReaderMode) {
             setReaderMode(true);
             return;
         }
     } else {
         if (modeSwitch) modeSwitch.style.display = 'flex';
+        // Note: visibility for non-saved articles is handled by setReaderMode(isReaderMode)
     }
 
     content.innerHTML = '<div class="loading-state"><h3>Optimizing for reading...</h3></div>';
