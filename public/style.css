@@ -664,6 +664,14 @@ mark.news-highlight {
 .banner-left {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
+    gap: 1rem;
+}
+
+.banner-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 1rem;
 }
 
