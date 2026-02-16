@@ -80,7 +80,9 @@
     <div id="reader-overlay" class="reader-overlay hidden">
         <div class="reader-container">
             <header class="reader-header">
-                <button id="close-reader" class="icon-btn">✕</button>
+                <div class="header-left">
+                    <button id="close-reader" class="icon-btn">✕</button>
+                </div>
                 <div class="reader-controls">
                     <select id="reader-language-select" class="reader-select">
                         <option value="original" selected>Original Language</option>
@@ -108,6 +110,7 @@
                     <button id="save-offline" class="icon-btn" title="Save Offline">📥</button>
                     <a id="open-external" target="_blank" class="icon-btn" title="Open in Browser">🔗</a>
                 </div>
+                <div class="header-right"></div>
             </header>
             <div id="reader-content" class="reader-body">
                 <!-- Content will be injected here -->
