@@ -13,4 +13,5 @@
 | 2026-02-16 13:10:00 | `8d18811`        | Center-align Reader header controls and further reduce headline font size          |
 | 2026-02-16 14:00:00 | `9b3f4c1`        | Hide Save icon in Original view and update Reader error messaging                  |
 | 2026-02-16 14:15:00 | `eac6ce7`        | Refine Reader error styling (bold advice) and simplify actions                     |
-| 2026-02-16 14:30:00 | `eac6ce7`        | Deploy latest refinements to iOS simulator and verify native build                 |
+| 2026-02-16 14:30:00 | `82eefc7`        | Deploy latest refinements to iOS simulator and verify native build                 |
+| 2026-02-16 14:40:00 | `23ae06c`        | Hide Save Offline icon when opening articles from the Saved collection             |
