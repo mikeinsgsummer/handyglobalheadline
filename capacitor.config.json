@@ -1,5 +1,10 @@
 {
   "appId": "com.example.countrynews",
   "appName": "Country News",
-  "webDir": "public"
+  "webDir": "public",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }

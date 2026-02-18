@@ -70,7 +70,6 @@ let readerDarkMode = localStorage.getItem('readerDarkMode') === 'true';
 let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
 let preferredSource = localStorage.getItem('preferredSource') || 'bing';
-
 // Initialize
 async function init() {
     await fetchCountries();
@@ -629,7 +628,7 @@ function getProxyUrl(targetUrl) {
 }
 
 async function fetchWithTimeout(resource, options = {}) {
-    const { timeout = 5000 } = options; // Lowered default timeout for faster failure
+    const { timeout = 5000 } = options;
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -643,6 +642,42 @@ async function fetchWithTimeout(resource, options = {}) {
         clearTimeout(id);
         throw error;
     }
+}
+
+/**
+ * Universal fetch that uses CapacitorHttp for native environments to bypass CORS/Proxies.
+ */
+async function nativeFetch(url, options = {}) {
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+    const useNative = isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp;
+
+    if (useNative) {
+        console.log(`[Native] Fetching: ${url}`);
+        try {
+            const response = await window.Capacitor.Plugins.CapacitorHttp.get({
+                url: url,
+                headers: {
+                    ...options.headers,
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+                },
+                connectTimeout: options.timeout || 10000,
+                readTimeout: options.timeout || 10000
+            });
+
+            if (response.status >= 200 && response.status < 300) {
+                return response.data;
+            }
+            throw new Error(`Native fetch status ${response.status}`);
+        } catch (e) {
+            console.error("Native fetch internal error:", e);
+            throw e;
+        }
+    }
+
+    // Fallback to standard fetch (for browser or if native plugin fails)
+    const res = await fetchWithTimeout(url, options);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return await res.text();
 }
 
 /**
@@ -722,9 +757,7 @@ async function fetchRssRacing(targetUrl, timeout = 7000) {
 
     const tryProxy = async (proxyUrl) => {
         try {
-            const res = await fetch(proxyUrl, { signal: controller.signal });
-            if (!res.ok) throw new Error(`Status ${res.status}`);
-            const text = await res.text();
+            const text = await nativeFetch(proxyUrl, { timeout: 8000 });
             if (!text || text.length < 500) throw new Error("Incomplete RSS");
             console.log(`[Proxy Win] ${proxyUrl.split('?')[0]}`);
             return text;
@@ -733,6 +766,15 @@ async function fetchRssRacing(targetUrl, timeout = 7000) {
             throw e;
         }
     };
+
+    // In native environment, try direct fetch FIRST before racing proxies
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        try {
+            return await nativeFetch(targetUrl, { timeout: 6000 });
+        } catch (e) {
+            console.warn("[Native Direct Fail] Falling back to proxy racing...", e.message);
+        }
+    }
 
     try {
         const result = await Promise.any(proxies.map(p => tryProxy(p)));
@@ -795,11 +837,19 @@ function extractRedirectUrl(html, currentUrl) {
     }
 
     // 3. Look for window.location in scripts
-    const scriptMatch = html.match(/window\.location\.replace\((["'])([^"']+)\1\)/);
+    const scriptMatch = html.match(/window\.location\.(?:replace|href)\s*=\s*(["'])([^"']+)\1/);
     if (scriptMatch) return scriptMatch[2];
 
-    const hrefMatch = html.match(/window\.location\.href\s*=\s*(["'])([^"']+)\1/);
-    if (hrefMatch) return hrefMatch[2];
+    // 4. Specialized handling for Bing apiclick
+    if ((currentUrl.includes('bing.com') || currentUrl.includes('bing-news')) && html.includes('apiclick.aspx')) {
+        const apiclickMatch = html.match(/href=["']([^"']*apiclick\.aspx[^"']+)["']/i);
+        if (apiclickMatch) return apiclickMatch[1];
+    }
+
+    // 5. Look for any single high-confidence link in a tiny page
+    if (html.length < 3000 && anchors.length === 1) {
+        return anchors[0].href;
+    }
 
     return null;
 }
@@ -824,9 +874,14 @@ function isValidArticleHTML(html) {
     if (blockers.some(phrase => lower.includes(phrase))) return false;
 
     // If it's a tiny page with a redirect notice, we return true so fetchArticleHTML can try to follow it
-    if (html.length < 2000 && (lower.includes('redirect') || lower.includes('click here'))) return true;
+    const hasRedirectIndicators = lower.includes('redirect') ||
+        lower.includes('click here') ||
+        lower.includes('http-equiv="refresh"') ||
+        lower.includes('window.location');
 
-    return html.length > 1000;
+    if (html.length < 2500 && hasRedirectIndicators) return true;
+
+    return html.length > 800; // Slightly more permissive length
 }
 
 /**
@@ -838,7 +893,7 @@ async function fetchArticleHTML(targetUrl, depth = 0) {
     console.log(`Fetching (depth ${depth}): ${targetUrl}`);
 
     const proxies = [
-        getProxyUrl(targetUrl),
+        targetUrl, // Try direct first (nativeFetch handles this well for native)
         `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
         `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(targetUrl)}`
@@ -848,9 +903,7 @@ async function fetchArticleHTML(targetUrl, depth = 0) {
 
     const fetchProxy = async (url) => {
         const start = Date.now();
-        const res = await fetchWithTimeout(url, { timeout: 12000 });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const html = await res.text();
+        const html = await nativeFetch(url, { timeout: 12000 });
 
         console.log(`Proxy ${url} responded in ${Date.now() - start}ms. Length: ${html.length}`);
 
@@ -862,8 +915,17 @@ async function fetchArticleHTML(targetUrl, depth = 0) {
         // Check for internal redirect notice
         const redirectUrl = extractRedirectUrl(html, targetUrl);
         if (redirectUrl && redirectUrl !== targetUrl) {
-            console.log(`Detected redirect to: ${redirectUrl}`);
-            return await fetchArticleHTML(redirectUrl, depth + 1);
+            let finalRedirect = redirectUrl;
+            // Handle relative URLs
+            if (!redirectUrl.startsWith('http')) {
+                try {
+                    finalRedirect = new URL(redirectUrl, targetUrl).href;
+                } catch (e) {
+                    console.warn("Failed to construct absolute redirect URL", e);
+                }
+            }
+            console.log(`Detected redirect to: ${finalRedirect}`);
+            return await fetchArticleHTML(finalRedirect, depth + 1);
         }
 
         return html;
@@ -906,7 +968,8 @@ async function fetchBBCNews(countryCode) {
         const countryName = COUNTRY_NAMES[countryCode] || countryCode;
         const rssUrl = `https://www.bing.com/news/search?q=site:bbc.com+${encodeURIComponent(countryName)}+news&format=rss`;
 
-        const xmlText = await fetchRssRacing(rssUrl, 5000);
+        // Direct native fetch for RSS
+        const xmlText = await nativeFetch(rssUrl, { timeout: 8000 });
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
@@ -1065,7 +1128,6 @@ function renderNews(articles, isSavedView = false) {
         // Simple pre-fetching on hover to speed up loading
         card.onmouseenter = () => {
             if (!article.content) {
-                // Low priority fetch in background
                 fetchArticleHTML(article.link).catch(() => { });
             }
         };
@@ -1099,8 +1161,6 @@ function renderNews(articles, isSavedView = false) {
     });
 }
 
-// ... (retain existing helper functions like showLoading, showError, etc.) ...
-
 function showLoading() {
     newsContainer.innerHTML = '<div class="loading-state"><h3>Loading...</h3></div>';
 }
@@ -1112,6 +1172,5 @@ function showError(msg) {
 function showEmpty(msg) {
     newsContainer.innerHTML = `<div class="empty-state"><h3>${msg}</h3></div>`;
 }
-
 
 init();
