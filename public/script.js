@@ -245,6 +245,25 @@ async function openArticle(article) {
     content.innerHTML = '<div class="loading-state"><h3>Optimizing for reading...</h3></div>';
 
     if (!isReaderMode) {
+        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+            try {
+                await window.Capacitor.Plugins.Browser.open({ url: article.link });
+                content.innerHTML = `
+                    <div class="info-state">
+                        <h3>Original View</h3>
+                        <p>The original webpage is open in a native browser overlay.</p>
+                        <div class="error-actions">
+                            <button onclick="setReaderMode(true)" class="text-btn primary">Switch to Reader Mode</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            } catch (e) {
+                console.error("Native Browser Error:", e);
+            }
+        }
+
         try {
             const html = await fetchArticleHTML(article.link);
             content.innerHTML = `
@@ -341,14 +360,19 @@ async function openArticle(article) {
     } catch (error) {
         console.error("Reader Error:", error);
         content.innerHTML = `
-        <div class="error-state">
-            <p>Contents pending to be loaded.</p>
-            <p><strong>Access it in Web is advised</strong></p>
-            <div class="error-actions">
-                <a href="${article.link}" target="_blank" class="text-btn primary">Open in Browser</a>
-            </div>
+        <div class="info-state">
+            <p>Contents loading delayed.</p>
+            <p><strong>Jumping to Original view...</strong></p>
         </div>
         `;
+
+        const failureLink = article.link;
+        setTimeout(() => {
+            // Only switch if we are still on the same article and still in reader mode
+            if (currentArticle && currentArticle.link === failureLink && isReaderMode) {
+                setReaderMode(false);
+            }
+        }, 1000);
     }
 }
 
@@ -560,6 +584,9 @@ async function fetchCountries() {
             countrySelect.appendChild(option);
         });
 
+        countrySelect.disabled = false;
+
+        let defaultCountry = 'us';
         const detected = await detectUserCountry();
         if (detected) {
             defaultCountry = detected;
