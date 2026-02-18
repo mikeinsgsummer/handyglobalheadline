@@ -69,6 +69,7 @@ let readerFontSize = parseInt(localStorage.getItem('readerFontSize')) || 18;
 let readerDarkMode = localStorage.getItem('readerDarkMode') === 'true';
 let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
+let bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
 let preferredSource = localStorage.getItem('preferredSource') || 'bing';
 // Initialize
 async function init() {
@@ -113,8 +114,12 @@ function setupReaderHandlers() {
     }
 
     saveBtn.onclick = saveCurrentArticle;
-
     savedListBtn.onclick = showSavedArticles;
+
+    const bookmarkListBtn = document.getElementById('bookmark-list-btn');
+    if (bookmarkListBtn) {
+        bookmarkListBtn.onclick = showBookmarks;
+    }
 
     if (readerLangSelect) {
         readerLangSelect.onchange = () => {
@@ -192,30 +197,32 @@ function setReaderMode(reader) {
     openArticle(currentArticle);
 }
 
-async function openArticle(article) {
+async function openArticle(article, forceOriginal = false) {
     currentArticle = article;
     const overlay = document.getElementById('reader-overlay');
     const content = document.getElementById('reader-content');
     const readerLangSelect = document.getElementById('reader-language-select');
 
-    // Requirement 1 & 4: Reset state when opening a NEW article (overlay is currently hidden)
+    // Reset state when opening a NEW article
     if (overlay.classList.contains('hidden')) {
         if (readerLangSelect) readerLangSelect.value = 'original';
-
-        // Requirement 4: Force Reader Mode by default
-        isReaderMode = true;
-        const switchOpts = document.querySelectorAll('#reader-mode-switch .switch-opt');
-        switchOpts.forEach(opt => {
-            if (opt.getAttribute('data-mode') === 'reader') {
-                opt.classList.add('active');
-            } else {
-                opt.classList.remove('active');
-            }
-        });
-        if (readerLangSelect) readerLangSelect.classList.remove('hidden');
-        const saveBtn = document.getElementById('save-offline');
-        if (saveBtn) saveBtn.classList.remove('hidden');
+        isReaderMode = true; // Default
     }
+
+    if (forceOriginal) {
+        isReaderMode = false;
+    }
+
+    // Refresh UI toggle state
+    const switchOpts = document.querySelectorAll('#reader-mode-switch .switch-opt');
+    switchOpts.forEach(opt => {
+        const mode = opt.getAttribute('data-mode');
+        if ((mode === 'reader' && isReaderMode) || (mode === 'original' && !isReaderMode)) {
+            opt.classList.add('active');
+        } else {
+            opt.classList.remove('active');
+        }
+    });
 
     const targetLang = readerLangSelect ? readerLangSelect.value : 'original';
 
@@ -478,6 +485,7 @@ function deleteAllSavedArticles() {
 }
 
 function showSavedArticles() {
+    document.body.classList.remove('bookmarks-view-active');
     document.body.classList.add('saved-view-active');
     if (savedArticles.length === 0) {
         showEmpty("You haven't saved any articles yet.");
@@ -511,6 +519,85 @@ function showSavedArticles() {
     newsContainer.prepend(backBanner);
 }
 
+function toggleBookmark(article, event) {
+    if (event) event.stopPropagation();
+
+    const index = bookmarkedArticles.findIndex(a => a.link === article.link);
+    if (index > -1) {
+        bookmarkedArticles.splice(index, 1);
+        console.log("Removed from bookmarks");
+    } else {
+        bookmarkedArticles.push({
+            title: article.title,
+            link: article.link,
+            pubDate: article.pubDate,
+            source: article.source
+        });
+        console.log("Added to bookmarks");
+    }
+
+    localStorage.setItem('bookmarkedArticles', JSON.stringify(bookmarkedArticles));
+
+    // Update UI if we are in the bookmarks view
+    if (document.body.classList.contains('bookmarks-view-active')) {
+        showBookmarks();
+    } else {
+        // Just refresh the current list to update stars
+        const starBtn = event ? event.currentTarget : null;
+        if (starBtn && (starBtn.classList.contains('bookmark-btn') || starBtn.closest('.bookmark-btn'))) {
+            const btn = starBtn.classList.contains('bookmark-btn') ? starBtn : starBtn.closest('.bookmark-btn');
+            const isActive = btn.classList.toggle('active');
+
+            // Swap SVG content
+            btn.innerHTML = isActive ?
+                `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` :
+                `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        }
+    }
+}
+
+function showBookmarks() {
+    document.body.classList.remove('saved-view-active');
+    document.body.classList.add('bookmarks-view-active');
+
+    if (bookmarkedArticles.length === 0) {
+        showEmpty("You haven't bookmarked any headlines yet.");
+        const backBanner = document.createElement('div');
+        backBanner.className = 'info-banner saved-header';
+        backBanner.innerHTML = `
+            <div class="banner-left">
+                <button onclick="refreshNews()" class="icon-btn-text">← Back to Home</button>
+            </div>
+            <div class="banner-title">Bookmarks</div>
+        `;
+        newsContainer.prepend(backBanner);
+        return;
+    }
+
+    renderNews(bookmarkedArticles, false, true); // isSavedView=false, isBookmarkView=true
+
+    const backBanner = document.createElement('div');
+    backBanner.className = 'info-banner saved-header';
+    backBanner.innerHTML = `
+            <div class="banner-left">
+                <button onclick="refreshNews()" class="icon-btn-text">← Back to Home</button>
+            </div>
+            <div class="banner-title">Bookmarks <svg viewBox="0 0 24 24" fill="currentColor" style="width:1.2rem; height:1.2rem; display:inline-block; vertical-align:middle; margin-left:5px; color:#facc15;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+            <div class="banner-right">
+                <button onclick="clearAllBookmarks()" class="icon-btn-text delete-all" title="Clear All">🗑️ Clear All</button>
+            </div>
+        `;
+    newsContainer.prepend(backBanner);
+}
+
+function clearAllBookmarks() {
+    if (confirm("Are you sure you want to clear all bookmarks?")) {
+        bookmarkedArticles = [];
+        localStorage.setItem('bookmarkedArticles', JSON.stringify(bookmarkedArticles));
+        showBookmarks();
+    }
+}
+
 function applyHighlights(htmlContent) {
     // If we were just storing content, this is handled by loading the saved content
 }
@@ -527,6 +614,7 @@ function updateLanguageLabel() {
 
 function refreshNews() {
     document.body.classList.remove('saved-view-active');
+    document.body.classList.remove('bookmarks-view-active');
     const country = countrySelect.value;
     const lang = languageSelect.value;
     if (country) fetchNews(country, lang);
@@ -1139,7 +1227,7 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
     }
 }
 
-function renderNews(articles, isSavedView = false) {
+function renderNews(articles, isSavedView = false, isBookmarkView = false) {
     newsContainer.innerHTML = '';
     if (articles.length === 0) {
         showEmpty("No news found.");
@@ -1152,9 +1240,12 @@ function renderNews(articles, isSavedView = false) {
         card.style.animationDelay = `${index * 0.1}s`;
         card.style.cursor = 'pointer';
 
+        const isBookmarked = bookmarkedArticles.some(a => a.link === article.link);
+
         card.onclick = (e) => {
             e.preventDefault();
-            openArticle(article);
+            // Requirement 4: From bookmark UI, open as Original view
+            openArticle(article, isBookmarkView);
         };
 
         // Simple pre-fetching on hover to speed up loading
@@ -1170,14 +1261,28 @@ function renderNews(articles, isSavedView = false) {
 
         card.innerHTML = `
             <div class="news-content">
-                ${isSavedView ? `<button class="card-delete-btn" title="Delete">🗑️</button>` : ''}
                 <div class="news-source">
-                    <span>${article.source}</span>
-                    <span class="news-date">${date}</span>
+                    <div class="source-left">
+                        <span>${article.source}</span>
+                        <span class="news-date">${date}</span>
+                    </div>
+                    <button class="bookmark-btn ${isBookmarked ? 'active' : ''}" title="Bookmark">
+                        ${isBookmarked ?
+                `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` :
+                `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
+            }
+                    </button>
                 </div>
                 <div class="news-title">${article.title}</div>
+                ${isSavedView ? `<button class="card-delete-btn" title="Delete">🗑️ Delete</button>` : ''}
             </div>
         `;
+
+        const bkmkBtn = card.querySelector('.bookmark-btn');
+        bkmkBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleBookmark(article, e);
+        };
 
         if (isSavedView) {
             const delBtn = card.querySelector('.card-delete-btn');
