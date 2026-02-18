@@ -679,16 +679,24 @@ async function nativeFetch(url, options = {}) {
     const useNative = isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp;
 
     if (useNative) {
+        const mobileUA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
         console.log(`[Native] Fetching: ${url}`);
         try {
             const response = await window.Capacitor.Plugins.CapacitorHttp.get({
                 url: url,
                 headers: {
                     ...options.headers,
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+                    'User-Agent': mobileUA,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'Upgrade-Insecure-Requests': '1'
                 },
-                connectTimeout: options.timeout || 10000,
-                readTimeout: options.timeout || 10000
+                connectTimeout: options.timeout || 15000,
+                readTimeout: options.timeout || 15000
             });
 
             if (response.status >= 200 && response.status < 300) {
@@ -740,30 +748,19 @@ async function fetchFromRss(feed, timeout = 5000) {
  * Uses CapacitorHttp if available to bypass CORS in native app.
  */
 async function fetchRssRacing(targetUrl, timeout = 7000) {
-    // 1. Try Native CapacitorHttp first if available (bypasses CORS & Proxies)
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+
+    // 1. In native environment, try direct fetch FIRST (bypasses CORS/Proxies)
+    if (isNative) {
         try {
-            const options = {
-                url: targetUrl,
-                headers: {
-                    'Accept': 'application/xml, text/xml, */*',
-                    'User-Agent': navigator.userAgent
-                },
-                connectTimeout: timeout,
-                readTimeout: timeout
-            };
-            const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
-            if (response && response.data) {
-                const dataStr = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-                if (dataStr.includes('<rss') || dataStr.includes('<feed') || (dataStr.includes('<?xml') && dataStr.length > 500)) {
-                    console.log(`[Native RSS Success] Verified RSS for ${targetUrl.slice(0, 15)}`);
-                    return dataStr;
-                } else {
-                    console.warn(`[Native RSS Junk] Received non-RSS content. Falling back...`);
-                }
+            const xmlText = await nativeFetch(targetUrl, { timeout: 6000 });
+            if (xmlText && (xmlText.includes('<rss') || xmlText.includes('<feed') || xmlText.includes('<?xml'))) {
+                console.log(`[Native RSS Success] Direct fetch for ${targetUrl.slice(0, 30)}`);
+                return xmlText;
             }
+            console.warn(`[Native RSS Junk] Direct fetch returned non-RSS content for ${targetUrl.slice(0, 30)}`);
         } catch (e) {
-            console.warn(`[Native RSS Fail] ${e.message}. Trying proxies...`);
+            console.warn(`[Native Direct Fail] ${e.message}. Falling back to proxy racing...`);
         }
     }
 
@@ -786,6 +783,10 @@ async function fetchRssRacing(targetUrl, timeout = 7000) {
         try {
             const text = await nativeFetch(proxyUrl, { timeout: 8000 });
             if (!text || text.length < 500) throw new Error("Incomplete RSS");
+            // Check if proxy returned bot blocker instead of RSS
+            if (text.includes('pardon our interruption') || text.includes('checking your browser')) {
+                throw new Error("Proxy returned bot-blocked page");
+            }
             console.log(`[Proxy Win] ${proxyUrl.split('?')[0]}`);
             return text;
         } catch (e) {
@@ -793,15 +794,6 @@ async function fetchRssRacing(targetUrl, timeout = 7000) {
             throw e;
         }
     };
-
-    // In native environment, try direct fetch FIRST before racing proxies
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        try {
-            return await nativeFetch(targetUrl, { timeout: 6000 });
-        } catch (e) {
-            console.warn("[Native Direct Fail] Falling back to proxy racing...", e.message);
-        }
-    }
 
     try {
         const result = await Promise.any(proxies.map(p => tryProxy(p)));
@@ -970,13 +962,14 @@ async function fetchArticleHTML(targetUrl, depth = 0) {
 async function fetchBingNews(countryCode) {
     try {
         const countryName = COUNTRY_NAMES[countryCode] || countryCode;
-        const rssUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(countryName)}+news&format=rss`;
+        const rssUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(countryName)}+news&format=rss&qs=n&form=NTYA&sp=-1&pq=${encodeURIComponent(countryName)}+news&count=20`;
 
-        const xmlText = await fetchRssRacing(rssUrl, 5000);
+        const xmlText = await fetchRssRacing(rssUrl, 7000);
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
         const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
+        if (items.length === 0) throw new Error("Bing returned zero results");
 
         return items.map(item => ({
             title: item.querySelector("title").textContent,
@@ -985,7 +978,15 @@ async function fetchBingNews(countryCode) {
             source: 'Bing News'
         }));
     } catch (error) {
-        console.error("Bing News Error:", error);
+        console.error("Bing News Error, trying Google fallback:", error);
+        // Fallback to Google News search for the same country
+        const info = COUNTRY_LANGUAGES[countryCode];
+        if (info) {
+            const cc = countryCode.toUpperCase();
+            const hl = info.lang || 'en';
+            const rssUrl = `https://news.google.com/rss?gl=${cc}&hl=${hl}&ceid=${cc}:${hl}`;
+            return await fetchFromRss({ name: 'Google (fallback)', url: rssUrl, source: 'Bing News' }, 6000);
+        }
         throw error;
     }
 }
@@ -993,14 +994,15 @@ async function fetchBingNews(countryCode) {
 async function fetchBBCNews(countryCode) {
     try {
         const countryName = COUNTRY_NAMES[countryCode] || countryCode;
-        const rssUrl = `https://www.bing.com/news/search?q=site:bbc.com+${encodeURIComponent(countryName)}+news&format=rss`;
+        const rssUrl = `https://www.bing.com/news/search?q=site:bbc.com+${encodeURIComponent(countryName)}+news&format=rss&qs=n&form=NTYA&count=20`;
 
-        // Direct native fetch for RSS
-        const xmlText = await nativeFetch(rssUrl, { timeout: 8000 });
+        const xmlText = await fetchRssRacing(rssUrl, 7000);
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
         const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
+        if (items.length === 0) throw new Error("BBC search returned zero results");
+
         return items.map(item => ({
             title: item.querySelector("title").textContent.trim(),
             link: item.querySelector("link").textContent,
@@ -1008,8 +1010,11 @@ async function fetchBBCNews(countryCode) {
             source: 'BBC News'
         }));
     } catch (error) {
-        console.error("BBC News Error:", error);
-        throw error;
+        console.error("BBC News Error (via Bing), trying Google/BBC fallback:", error);
+        // Fallback: Use Google News but search specifically for BBC results
+        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+        const rssUrl = `https://news.google.com/rss/search?q=site:bbc.com+${encodeURIComponent(countryName)}&hl=en-GB&gl=GB&ceid=GB:en`;
+        return await fetchFromRss({ name: 'Google/BBC', url: rssUrl, source: 'BBC News' }, 7000);
     }
 }
 
