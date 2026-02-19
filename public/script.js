@@ -70,7 +70,7 @@ let readerDarkMode = localStorage.getItem('readerDarkMode') === 'true';
 let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
 let bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
-let preferredSource = localStorage.getItem('preferredSource') || 'bing';
+let preferredSource = localStorage.getItem('preferredSource') || 'google';
 // Initialize
 async function init() {
     await fetchCountries();
@@ -84,6 +84,19 @@ async function init() {
 
     setupReaderHandlers();
     setupSettingsHandlers();
+
+    // Setup Main Screen Controls
+    const mainFontIncr = document.getElementById('font-increase-main');
+    const mainFontDecr = document.getElementById('font-decrease-main');
+    const mainDarkToggle = document.getElementById('toggle-dark-mode-main');
+
+    if (mainFontIncr) mainFontIncr.onclick = () => updateFontSize(2);
+    if (mainFontDecr) mainFontDecr.onclick = () => updateFontSize(-2);
+    if (mainDarkToggle) mainDarkToggle.onclick = toggleDarkMode;
+
+    // Apply saved preferences
+    applyFontSize();
+    updateTheme();
 }
 
 function setupReaderHandlers() {
@@ -97,12 +110,12 @@ function setupReaderHandlers() {
     const savedListBtn = document.getElementById('saved-articles-btn');
     const readerLangSelect = document.getElementById('reader-language-select');
 
-    closeBtn.onclick = () => overlay.classList.add('hidden');
-    overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.add('hidden'); };
+    if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
+    if (overlay) overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.add('hidden'); };
 
-    fontIncr.onclick = () => updateFontSize(2);
-    fontDecr.onclick = () => updateFontSize(-2);
-    darkToggle.onclick = toggleDarkMode;
+    if (fontIncr) fontIncr.onclick = () => updateFontSize(2);
+    if (fontDecr) fontDecr.onclick = () => updateFontSize(-2);
+    if (darkToggle) darkToggle.onclick = toggleDarkMode;
 
     if (modeSwitch) {
         modeSwitch.querySelectorAll('.switch-opt').forEach(opt => {
@@ -113,8 +126,8 @@ function setupReaderHandlers() {
         });
     }
 
-    saveBtn.onclick = saveCurrentArticle;
-    savedListBtn.onclick = showSavedArticles;
+    if (saveBtn) saveBtn.onclick = saveCurrentArticle;
+    if (savedListBtn) savedListBtn.onclick = showSavedArticles;
 
     const bookmarkListBtn = document.getElementById('bookmark-list-btn');
     if (bookmarkListBtn) {
@@ -126,10 +139,14 @@ function setupReaderHandlers() {
             if (currentArticle) openArticle(currentArticle);
         };
     }
+}
 
-    // Apply saved preferences
-    applyFontSize();
-    if (readerDarkMode) document.body.classList.add('global-dark'); // Optional global sync
+function updateTheme() {
+    if (readerDarkMode) {
+        document.body.classList.add('global-dark');
+    } else {
+        document.body.classList.remove('global-dark');
+    }
     updateReaderTheme();
 }
 
@@ -142,12 +159,31 @@ function updateFontSize(delta) {
 function applyFontSize() {
     const content = document.getElementById('reader-content');
     if (content) content.style.fontSize = `${readerFontSize}px`;
+
+    // Also apply to home screen headlines (mapped from readerFontSize)
+    // Default readerFontSize 18px maps to default headline size ~20px (1.25rem)
+    const headlineSize = readerFontSize + 2;
+    document.documentElement.style.setProperty('--headline-font-size', `${headlineSize}px`);
+
+    // Grey out/Disable buttons at limits (12px min, 32px max)
+    const decrButtons = ['font-decrease', 'font-decrease-main'];
+    const incrButtons = ['font-increase', 'font-increase-main'];
+
+    decrButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = (readerFontSize <= 12);
+    });
+
+    incrButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = (readerFontSize >= 32);
+    });
 }
 
 function toggleDarkMode() {
     readerDarkMode = !readerDarkMode;
     localStorage.setItem('readerDarkMode', readerDarkMode);
-    updateReaderTheme();
+    updateTheme();
 }
 
 function updateReaderTheme() {
@@ -838,59 +874,63 @@ async function fetchFromRss(feed, timeout = 5000) {
 async function fetchRssRacing(targetUrl, timeout = 7000) {
     const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
 
-    // 1. In native environment, try direct fetch FIRST (bypasses CORS/Proxies)
-    if (isNative) {
-        try {
-            const xmlText = await nativeFetch(targetUrl, { timeout: 6000 });
-            if (xmlText && (xmlText.includes('<rss') || xmlText.includes('<feed') || xmlText.includes('<?xml'))) {
-                console.log(`[Native RSS Success] Direct fetch for ${targetUrl.slice(0, 30)}`);
-                return xmlText;
-            }
-            console.warn(`[Native RSS Junk] Direct fetch returned non-RSS content for ${targetUrl.slice(0, 30)}`);
-        } catch (e) {
-            console.warn(`[Native Direct Fail] ${e.message}. Falling back to proxy racing...`);
-        }
-    }
-
+    // Proxies definition
     const proxies = [
         `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-        `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(targetUrl)}`,
-        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}`
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
     ];
 
-    // Add local proxy if in dev environment
     if (window.location.port === '8888') {
         proxies.unshift(`/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`);
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const validateRss = (text) => {
+        if (!text || text.length < 500) throw new Error("Incomplete");
+        const trimmed = text.trim();
+        const isXml = trimmed.startsWith('<?xml') || trimmed.startsWith('<rss') || trimmed.startsWith('<feed');
+        if (!isXml) throw new Error("Not valid RSS/XML");
 
-    const tryProxy = async (proxyUrl) => {
+        const lowerText = text.toLowerCase();
+        if (lowerText.includes('pardon our interruption') ||
+            lowerText.includes('checking your browser') ||
+            lowerText.includes('access denied')) {
+            throw new Error("Bot detection");
+        }
+        return true;
+    };
+
+    const tryFetch = async (url, label) => {
         try {
-            const text = await nativeFetch(proxyUrl, { timeout: 8000 });
-            if (!text || text.length < 500) throw new Error("Incomplete RSS");
-            // Check if proxy returned bot blocker instead of RSS
-            if (text.includes('pardon our interruption') || text.includes('checking your browser')) {
-                throw new Error("Proxy returned bot-blocked page");
-            }
-            console.log(`[Proxy Win] ${proxyUrl.split('?')[0]}`);
+            const text = await nativeFetch(url, { timeout: 6000 });
+            validateRss(text);
+            console.log(`[Race Win] ${label}: ${url.slice(0, 40)}`);
             return text;
         } catch (e) {
-            console.warn(`[Proxy Fail] ${proxyUrl.split('?')[0]}: ${e.message}`);
+            // Silence warning for racing to keep logs clean, only error if all fail
             throw e;
         }
     };
 
+    // START ALL AT ONCE
+    const racingTasks = proxies.map(p => tryFetch(p, "Proxy"));
+    if (isNative) {
+        racingTasks.push(tryFetch(targetUrl, "Direct"));
+    }
+
     try {
-        const result = await Promise.any(proxies.map(p => tryProxy(p)));
-        clearTimeout(timeoutId);
-        return result;
+        const controller = new AbortController();
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Race Timeout")), timeout)
+        );
+
+        // Promise.any returns the FIRST successful result
+        return await Promise.race([
+            Promise.any(racingTasks),
+            timeoutPromise
+        ]);
     } catch (e) {
-        clearTimeout(timeoutId);
-        console.error("All RSS racing proxies failed for", targetUrl);
-        throw new Error("All RSS racing proxies failed");
+        console.error("All racing paths failed for:", targetUrl);
+        throw new Error("All Fetching Paths Failed");
     }
 }
 
@@ -965,7 +1005,7 @@ function extractRedirectUrl(html, currentUrl) {
  * Validates if the returned HTML is actual content or a bot-blocking page.
  */
 function isValidArticleHTML(html) {
-    if (!html || html.length < 200) return false;
+    if (!html || html.length < 500) return false;
     const lower = html.toLowerCase();
 
     // Check for explicit bot blocker PHRASES (not just words)
@@ -975,20 +1015,29 @@ function isValidArticleHTML(html) {
         'access to this page has been denied',
         'checking your browser',
         'bot or a human',
-        'automated access'
+        'automated access',
+        'enable cookies',
+        'access denied',
+        'robot check',
+        'captcha',
+        'security check'
     ];
 
-    if (blockers.some(phrase => lower.includes(phrase))) return false;
+    if (blockers.some(phrase => lower.includes(phrase))) {
+        console.warn(`[Content Rejected] Bot blocker detected: ${blockers.find(p => lower.includes(p))}`);
+        return false;
+    }
 
     // If it's a tiny page with a redirect notice, we return true so fetchArticleHTML can try to follow it
     const hasRedirectIndicators = lower.includes('redirect') ||
         lower.includes('click here') ||
         lower.includes('http-equiv="refresh"') ||
-        lower.includes('window.location');
+        lower.includes('window.location') ||
+        lower.includes('url=');
 
-    if (html.length < 2500 && hasRedirectIndicators) return true;
+    if (html.length < 3000 && hasRedirectIndicators) return true;
 
-    return html.length > 800; // Slightly more permissive length
+    return html.length > 1000; // Increased threshold for "real" content
 }
 
 /**
@@ -1050,7 +1099,12 @@ async function fetchArticleHTML(targetUrl, depth = 0) {
 async function fetchBingNews(countryCode) {
     try {
         const countryName = COUNTRY_NAMES[countryCode] || countryCode;
-        const rssUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(countryName)}+news&format=rss&qs=n&form=NTYA&sp=-1&pq=${encodeURIComponent(countryName)}+news&count=20`;
+        const cc = countryCode.toUpperCase();
+        const info = COUNTRY_LANGUAGES[countryCode];
+        const hl = (info && info.lang) || 'en';
+
+        // Refined Bing Search with localization parameters
+        const rssUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(countryName)}+news&format=rss&cc=${cc}&setlang=${hl}&qs=n&form=NTYA&count=20`;
 
         const xmlText = await fetchRssRacing(rssUrl, 7000);
         const parser = new DOMParser();
@@ -1080,29 +1134,84 @@ async function fetchBingNews(countryCode) {
 }
 
 async function fetchBBCNews(countryCode) {
+    const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+    const isUK = countryCode.toLowerCase() === 'gb';
+
+    // Tier 1: Localized Search (Use Google for Speed)
+    if (!isUK) {
+        try {
+            console.log(`[BBC Tier 1] Attempting localized Google search for: ${countryName}`);
+            const rssUrl = `https://news.google.com/rss/search?q=site:bbc.com+${encodeURIComponent(countryName)}+news&hl=en&gl=${countryCode.toUpperCase()}&ceid=${countryCode.toUpperCase()}:en`;
+            const articles = await fetchFromRss({ name: 'BBC Search', url: rssUrl, source: 'BBC News' }, 4000);
+            if (articles && articles.length > 3) return articles; // Expect at least 4 articles for a "good" localized result
+        } catch (e) {
+            console.warn(`[BBC Tier 1 Fail] Localized search failed for ${countryName}: ${e.message}`);
+        }
+    }
+
+    // Tier 2: Direct Regional Feeds
+    const regionalFeeds = {
+        'africa': ['ng', 'za', 'ke', 'gh', 'eg', 'ma', 'dz', 'tn', 'ly', 'sd', 'et'],
+        'asia': ['cn', 'hk', 'jp', 'kr', 'in', 'id', 'my', 'ph', 'sg', 'th', 'vn', 'pk', 'bd'],
+        'europe': ['gb', 'fr', 'de', 'it', 'es', 'be', 'nl', 'no', 'se', 'dk', 'fi', 'pl', 'ro', 'gr', 'tr', 'ru', 'ua'],
+        'middle_east': ['ae', 'sa', 'il', 'jo', 'lb', 'qa', 'kw'],
+        'us_and_canada': ['us', 'ca'],
+        'latin_america': ['br', 'mx', 'ar', 'co', 'cl', 'pe', 've', 'cu']
+    };
+
+    let path = 'world'; // Default
+    const r = countryCode.toLowerCase();
+
+    if (regionalFeeds['africa'].includes(r)) path = 'world/africa';
+    else if (regionalFeeds['asia'].includes(r)) path = 'world/asia';
+    else if (regionalFeeds['europe'].includes(r)) {
+        path = (r === 'gb') ? 'uk' : 'world/europe';
+    }
+    else if (regionalFeeds['middle_east'].includes(r)) path = 'world/middle_east';
+    else if (regionalFeeds['us_and_canada'].includes(r)) path = 'world/us_and_canada';
+    else if (regionalFeeds['latin_america'].includes(r)) path = 'world/latin_america';
+
     try {
-        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
-        const rssUrl = `https://www.bing.com/news/search?q=site:bbc.com+${encodeURIComponent(countryName)}+news&format=rss&qs=n&form=NTYA&count=20`;
-
-        const xmlText = await fetchRssRacing(rssUrl, 7000);
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-        const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
-        if (items.length === 0) throw new Error("BBC search returned zero results");
-
-        return items.map(item => ({
-            title: item.querySelector("title").textContent.trim(),
-            link: item.querySelector("link").textContent,
-            pubDate: item.querySelector("pubDate") ? item.querySelector("pubDate").textContent : new Date().toISOString(),
-            source: 'BBC News'
-        }));
+        const bbcUrl = `https://feeds.bbci.co.uk/news/${path}/rss.xml`;
+        console.log(`[BBC Tier 2] Attempting regional feed: ${bbcUrl}`);
+        const articles = await fetchFromRss({ name: 'BBC News', url: bbcUrl, source: 'BBC News' }, 4000);
+        if (articles && articles.length > 0) return articles;
     } catch (error) {
-        console.error("BBC News Error (via Bing), trying Google/BBC fallback:", error);
-        // Fallback: Use Google News but search specifically for BBC results
-        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
-        const rssUrl = `https://news.google.com/rss/search?q=site:bbc.com+${encodeURIComponent(countryName)}&hl=en-GB&gl=GB&ceid=GB:en`;
-        return await fetchFromRss({ name: 'Google/BBC', url: rssUrl, source: 'BBC News' }, 7000);
+        console.error(`[BBC Tier 2 Fail] Regional feed failed for ${path}: ${error.message}`);
+    }
+
+    // Tier 3: Global World Feed (Final Fallback)
+    try {
+        const worldUrl = 'https://feeds.bbci.co.uk/news/world/rss.xml';
+        console.log(`[BBC Tier 3] Final fallback to World feed: ${worldUrl}`);
+        return await fetchFromRss({ name: 'BBC World', url: worldUrl, source: 'BBC News' }, 4000);
+    } catch (e) {
+        console.error(`[BBC Tier 3 Fail] All BBC sources failed: ${e.message}`);
+        return [];
+    }
+}
+
+async function fetchReutersNews(countryCode) {
+    const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+
+    // Tier 1: Localized Search (Use Google for Speed)
+    try {
+        console.log(`[Reuters Tier 1] Attempting localized Google search for: ${countryName}`);
+        const rssUrl = `https://news.google.com/rss/search?q=site:reuters.com+${encodeURIComponent(countryName)}+news&hl=en&gl=${countryCode.toUpperCase()}&ceid=${countryCode.toUpperCase()}:en`;
+        const articles = await fetchFromRss({ name: 'Reuters Search', url: rssUrl, source: 'Reuters News' }, 4000);
+        if (articles && articles.length > 3) return articles;
+    } catch (e) {
+        console.warn(`[Reuters Tier 1 Fail] Localized search failed for ${countryName}: ${e.message}`);
+    }
+
+    // Tier 2: World News (Robust XML Fallback via Google Search)
+    try {
+        const reutersUrl = 'https://news.google.com/rss/search?q=site:reuters.com+Top+News&hl=en&gl=US&ceid=US:en';
+        console.log(`[Reuters Tier 2] Falling back to Top News feed: ${reutersUrl}`);
+        return await fetchFromRss({ name: 'Reuters World', url: reutersUrl, source: 'Reuters News' }, 4000);
+    } catch (e) {
+        console.error(`[Reuters Tier 2 Fail] Reuters feed failed: ${e.message}`);
+        return [];
     }
 }
 
@@ -1158,7 +1267,7 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
 
             // Add other sources to the sequence if not already present
             if (!forcedSource) {
-                const others = ['bing', 'bbc', 'google'].filter(s => s !== preferredSource);
+                const others = ['google', 'bing', 'bbc', 'reuters'].filter(s => s !== preferredSource);
                 sequence = sequence.concat(others);
             }
 
@@ -1174,14 +1283,22 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
                         success = true;
                     } else if (source === 'google' || (source === 'google_regional')) {
                         const info = COUNTRY_LANGUAGES[countryCode];
+                        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
                         if (info) {
                             const cc = countryCode.toUpperCase();
                             let hl = info.lang || 'en';
                             let ceid = `${cc}:${hl}`;
-                            const rssUrl = `https://news.google.com/rss?gl=${cc}&hl=${hl}&ceid=${ceid}`;
-                            articles = await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 5000);
-                            success = true;
+
+                            // More robust search-based RSS for better regional coverage
+                            const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(countryName)}+news&hl=${hl}&gl=${cc}&ceid=${ceid}`;
+                            console.log(`[Google Regional RSS]: ${rssUrl}`);
+
+                            articles = await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 6000);
+                            if (articles && articles.length > 0) success = true;
                         }
+                    } else if (source === 'reuters') {
+                        articles = await fetchReutersNews(countryCode);
+                        success = (articles && articles.length > 0);
                     }
                     if (success && articles.length > 0) break;
                 } catch (e) {
@@ -1244,8 +1361,13 @@ function renderNews(articles, isSavedView = false, isBookmarkView = false) {
 
         card.onclick = (e) => {
             e.preventDefault();
-            // Requirement 4: From bookmark UI, open as Original view
-            openArticle(article, isBookmarkView);
+            // Requirements 1 & 2: Click headline opens in native browser (Home and Bookmarks)
+            // isSavedView remains as reader mode
+            if (isSavedView) {
+                openArticle(article, false);
+            } else {
+                openInNativeBrowser(article.link);
+            }
         };
 
         // Simple pre-fetching on hover to speed up loading
@@ -1308,6 +1430,20 @@ function showError(msg) {
 
 function showEmpty(msg) {
     newsContainer.innerHTML = `<div class="empty-state"><h3>${msg}</h3></div>`;
+}
+
+async function openInNativeBrowser(url) {
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+    if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+        try {
+            await window.Capacitor.Plugins.Browser.open({ url: url });
+        } catch (e) {
+            console.error("Native Browser Error:", e);
+            window.open(url, '_blank');
+        }
+    } else {
+        window.open(url, '_blank');
+    }
 }
 
 init();

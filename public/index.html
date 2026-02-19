@@ -54,8 +54,10 @@
 
                 <div class="source-selector compact">
                     <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+                    <button id="font-decrease-main" class="icon-btn" title="Decrease Font">A-</button>
+                    <button id="font-increase-main" class="icon-btn" title="Increase Font">A+</button>
+                    <button id="toggle-dark-mode-main" class="icon-btn" title="Toggle Dark Mode">🌓</button>
                     <button id="bookmark-list-btn" class="icon-btn" title="Bookmarks">⭐</button>
-                    <button id="saved-articles-btn" class="icon-btn" title="Saved Articles">🔖</button>
                 </div>
             </section>
 
@@ -133,6 +135,10 @@
                     <p class="settings-hint">This source will be tried first when loading news.</p>
                     <div class="settings-options">
                         <label class="radio-option">
+                            <input type="radio" name="preferred-source" value="google">
+                            <span class="radio-label">Google News</span>
+                        </label>
+                        <label class="radio-option">
                             <input type="radio" name="preferred-source" value="bing">
                             <span class="radio-label">Bing News</span>
                         </label>
@@ -141,8 +147,8 @@
                             <span class="radio-label">BBC News</span>
                         </label>
                         <label class="radio-option">
-                            <input type="radio" name="preferred-source" value="google">
-                            <span class="radio-label">Google News</span>
+                            <input type="radio" name="preferred-source" value="reuters">
+                            <span class="radio-label">Reuters News</span>
                         </label>
                     </div>
                 </div>
