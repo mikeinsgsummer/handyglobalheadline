@@ -71,6 +71,7 @@ let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
 let bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
 let preferredSource = localStorage.getItem('preferredSource') || 'google';
+let openInExternalSafari = localStorage.getItem('openInExternalSafari') === 'true';
 // Initialize
 async function init() {
     await fetchCountries();
@@ -1228,6 +1229,8 @@ function setupSettingsHandlers() {
             sourceRadios.forEach(radio => {
                 if (radio.value === preferredSource) radio.checked = true;
             });
+            const externalToggle = document.getElementById('external-safari-toggle');
+            if (externalToggle) externalToggle.checked = openInExternalSafari;
             settingsModal.classList.remove('hidden');
         };
     }
@@ -1242,6 +1245,11 @@ function setupSettingsHandlers() {
             if (selected) {
                 preferredSource = selected.value;
                 localStorage.setItem('preferredSource', preferredSource);
+            }
+            const externalToggle = document.getElementById('external-safari-toggle');
+            if (externalToggle) {
+                openInExternalSafari = externalToggle.checked;
+                localStorage.setItem('openInExternalSafari', openInExternalSafari);
             }
             settingsModal.classList.add('hidden');
 
@@ -1432,17 +1440,58 @@ function showEmpty(msg) {
     newsContainer.innerHTML = `<div class="empty-state"><h3>${msg}</h3></div>`;
 }
 
+async function resolveUrl(url) {
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+    if (!isNative || !window.Capacitor.Plugins.CapacitorHttp) return url;
+
+    try {
+        console.log(`[URL Resolver] Tracking: ${url.slice(0, 50)}...`);
+        // Just a fast HEAD-like get to find the final landing page
+        const response = await window.Capacitor.Plugins.CapacitorHttp.get({
+            url: url,
+            headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
+            connectTimeout: 4000,
+            readTimeout: 4000
+        });
+        if (response.url && response.url !== url) {
+            console.log(`[URL Resolver] Resolved to: ${response.url.slice(0, 50)}...`);
+            return response.url;
+        }
+        return url;
+    } catch (e) {
+        console.warn("[URL Resolver] Failed to resolve:", e.message);
+        return url;
+    }
+}
+
 async function openInNativeBrowser(url) {
     const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
-    if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+
+    // Resolve URL first to help Safari translation
+    let finalUrl = url;
+    if (isNative && (url.includes('google.com/url') || url.includes('bing.com') || url.includes('news.google.com'))) {
+        finalUrl = await resolveUrl(url);
+    }
+
+    if (isNative && window.Capacitor.Plugins) {
         try {
-            await window.Capacitor.Plugins.Browser.open({ url: url });
+            if (openInExternalSafari) {
+                // Open in Standalone Safari
+                console.log("[Browser] Opening in standalone Safari:", finalUrl);
+                window.open(finalUrl, '_system');
+            } else if (window.Capacitor.Plugins.Browser) {
+                // Open in In-App Browser (SFSafariViewController)
+                console.log("[Browser] Opening in-app:", finalUrl);
+                await window.Capacitor.Plugins.Browser.open({ url: finalUrl });
+            } else {
+                window.open(finalUrl, '_blank');
+            }
         } catch (e) {
             console.error("Native Browser Error:", e);
-            window.open(url, '_blank');
+            window.open(finalUrl, '_blank');
         }
     } else {
-        window.open(url, '_blank');
+        window.open(finalUrl, '_blank');
     }
 }
 

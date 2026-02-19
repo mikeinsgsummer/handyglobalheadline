@@ -132,7 +132,6 @@
             <div class="settings-body">
                 <div class="settings-section">
                     <h4>Preferred News Source</h4>
-                    <p class="settings-hint">This source will be tried first when loading news.</p>
                     <div class="settings-options">
                         <label class="radio-option">
                             <input type="radio" name="preferred-source" value="google">
@@ -150,6 +149,14 @@
                             <input type="radio" name="preferred-source" value="reuters">
                             <span class="radio-label">Reuters News</span>
                         </label>
+                    </div>
+                    <div class="settings-group"
+                        style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <label class="radio-option" style="justify-content: space-between; width: 100%;">
+                            <span class="radio-label">Open in Standalone Safari</span>
+                            <input type="checkbox" id="external-safari-toggle" style="width: auto;">
+                        </label>
+                        <p class="settings-hint">Full browsers features e.g. translations.</p>
                     </div>
                 </div>
                 <div class="settings-actions">
