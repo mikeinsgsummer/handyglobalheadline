@@ -70,8 +70,32 @@ let readerDarkMode = localStorage.getItem('readerDarkMode') === 'true';
 let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
 let bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
-let preferredSource = localStorage.getItem('preferredSource') || 'google';
+let preferredSources = JSON.parse(localStorage.getItem('preferredSources')) || ['google'];
+let preferredInterests = JSON.parse(localStorage.getItem('preferredInterests')) || [];
 let openInExternalSafari = localStorage.getItem('openInExternalSafari') === 'true';
+let allArticlesList = []; // Store fetched headlines for filtering
+let currentActiveInterest = 'all';
+
+// Interest keywords mapping (shared for fetching and local filtering)
+const INTEREST_KEYWORDS = {
+    'politics': ['politics', 'society', 'environment', 'government', 'policy', 'climate', 'global warming', 'voters', 'election', 'protest', 'activism'],
+    'finance': ['finance', 'economy', 'trade', 'stock', 'business', 'banking', 'markets', 'economic', 'trading', 'commerce', 'inflation', 'interest rates'],
+    'sports': ['sports', 'entertainment', 'arts', 'movies', 'music', 'celebrity', 'fashion', 'theater', 'gallery', 'museum', 'concert', 'film', 'actor', 'singer'],
+    'technology': ['technology', 'science', 'academics', 'research', 'innovation', 'space', 'ai', 'university', 'study', 'education', 'engineering', 'tech', 'robot'],
+    'health': ['health', 'medical', 'food', 'nutrition', 'wellness', 'medicine', 'disease', 'hospital', 'doctor', 'diet', 'recipe', 'fitness', 'workout'],
+    'travel': ['travel', 'leisure', 'tourism', 'vacation', 'airlines', 'hospitality', 'hobbies', 'photography', 'craft', 'collection', 'outdoors', 'camping']
+};
+
+// Interest icons mapping (Set 1 preferred)
+const INTEREST_ICONS = {
+    'politics': '🏛️ 👥 🌍',
+    'finance': '💰 📈 🚢',
+    'sports': '⚽ 🎭 🎨',
+    'technology': '💻 🔬 🎓',
+    'health': '🏥 💊 🍎',
+    'travel': '✈️ 🎸 🏄'
+};
+
 // Initialize
 async function init() {
     await fetchCountries();
@@ -98,6 +122,7 @@ async function init() {
     // Apply saved preferences
     applyFontSize();
     updateTheme();
+    updateInterestMenu();
 }
 
 function setupReaderHandlers() {
@@ -521,11 +546,20 @@ function deleteAllSavedArticles() {
     showSavedArticles();
 }
 
-function showSavedArticles() {
+function showSavedArticles(articlesOrEvent = savedArticles) {
+    // Check if called from an event listener
+    let articles = articlesOrEvent;
+    if (articlesOrEvent instanceof Event || (articlesOrEvent && articlesOrEvent.target)) {
+        articles = savedArticles;
+        currentActiveInterest = 'all'; // Reset to 'all' on entry
+        updateInterestMenu();
+    }
+
     document.body.classList.remove('bookmarks-view-active');
     document.body.classList.add('saved-view-active');
-    if (savedArticles.length === 0) {
-        showEmpty("You haven't saved any articles yet.");
+
+    if (articles.length === 0) {
+        showEmpty(articles === savedArticles ? "You haven't saved any articles yet." : "No matching saved articles found.");
         // Add a back button even if empty
         const backBanner = document.createElement('div');
         backBanner.className = 'info-banner saved-header';
@@ -539,7 +573,7 @@ function showSavedArticles() {
         return;
     }
 
-    renderNews(savedArticles.map(a => ({ ...a, source: 'Saved: ' + a.source })), true);
+    renderNews(articles.map(a => ({ ...a, source: 'Saved: ' + a.source })), true, false, true);
 
     // Add a banner with Delete All option
     const backBanner = document.createElement('div');
@@ -593,12 +627,20 @@ function toggleBookmark(article, event) {
     }
 }
 
-function showBookmarks() {
+function showBookmarks(articlesOrEvent = bookmarkedArticles) {
+    // Check if called from an event listener
+    let articles = articlesOrEvent;
+    if (articlesOrEvent instanceof Event || (articlesOrEvent && articlesOrEvent.target)) {
+        articles = bookmarkedArticles;
+        currentActiveInterest = 'all'; // Reset to 'all' on entry
+        updateInterestMenu();
+    }
+
     document.body.classList.remove('saved-view-active');
     document.body.classList.add('bookmarks-view-active');
 
-    if (bookmarkedArticles.length === 0) {
-        showEmpty("You haven't bookmarked any headlines yet.");
+    if (articles.length === 0) {
+        showEmpty(articles === bookmarkedArticles ? "You haven't bookmarked any headlines yet." : "No matching bookmarks found.");
         const backBanner = document.createElement('div');
         backBanner.className = 'info-banner saved-header';
         backBanner.innerHTML = `
@@ -611,7 +653,7 @@ function showBookmarks() {
         return;
     }
 
-    renderNews(bookmarkedArticles, false, true); // isSavedView=false, isBookmarkView=true
+    renderNews(articles, false, true, true); // skipMenuUpdate=true
 
     const backBanner = document.createElement('div');
     backBanner.className = 'info-banner saved-header';
@@ -619,7 +661,7 @@ function showBookmarks() {
             <div class="banner-left">
                 <button onclick="refreshNews()" class="icon-btn-text">← Back to Home</button>
             </div>
-            <div class="banner-title">Bookmarks <svg viewBox="0 0 24 24" fill="currentColor" style="width:1.2rem; height:1.2rem; display:inline-block; vertical-align:middle; margin-left:5px; color:#facc15;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+            <div class="banner-title">Bookmarks <svg viewBox="0 0 24 24" fill="currentColor" style="width:1.2rem; height:1.2rem; display:inline-block; vertical-align:middle; margin-left:5px; color:#facc15;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.46 21z"/></svg></div>
             <div class="banner-right">
                 <button onclick="clearAllBookmarks()" class="icon-btn-text delete-all" title="Clear All">🗑️ Clear All</button>
             </div>
@@ -1221,13 +1263,18 @@ function setupSettingsHandlers() {
     const settingsModal = document.getElementById('settings-modal');
     const closeSettings = document.getElementById('close-settings');
     const saveSettings = document.getElementById('save-settings');
-    const sourceRadios = document.getElementsByName('preferred-source');
+    const sourceCheckboxes = document.getElementsByName('preferred-source');
+    const interestCheckboxes = document.getElementsByName('preferred-interest');
 
     if (settingsBtn) {
         settingsBtn.onclick = () => {
-            // Set radio to current preference
-            sourceRadios.forEach(radio => {
-                if (radio.value === preferredSource) radio.checked = true;
+            // Set source checkboxes
+            sourceCheckboxes.forEach(checkbox => {
+                checkbox.checked = preferredSources.includes(checkbox.value);
+            });
+            // Set interest checkboxes
+            interestCheckboxes.forEach(checkbox => {
+                checkbox.checked = preferredInterests.includes(checkbox.value);
             });
             const externalToggle = document.getElementById('external-safari-toggle');
             if (externalToggle) externalToggle.checked = openInExternalSafari;
@@ -1241,17 +1288,31 @@ function setupSettingsHandlers() {
 
     if (saveSettings) {
         saveSettings.onclick = () => {
-            const selected = Array.from(sourceRadios).find(r => r.checked);
-            if (selected) {
-                preferredSource = selected.value;
-                localStorage.setItem('preferredSource', preferredSource);
+            const selectedSources = Array.from(sourceCheckboxes)
+                .filter(c => c.checked)
+                .map(c => c.value);
+
+            if (selectedSources.length > 0) {
+                preferredSources = selectedSources;
+                localStorage.setItem('preferredSources', JSON.stringify(preferredSources));
             }
+
+            const selectedInterests = Array.from(interestCheckboxes)
+                .filter(c => c.checked)
+                .map(c => c.value);
+
+            preferredInterests = selectedInterests; // Can be empty
+            localStorage.setItem('preferredInterests', JSON.stringify(preferredInterests));
+
             const externalToggle = document.getElementById('external-safari-toggle');
             if (externalToggle) {
                 openInExternalSafari = externalToggle.checked;
                 localStorage.setItem('openInExternalSafari', openInExternalSafari);
             }
             settingsModal.classList.add('hidden');
+
+            // Update interest menu tabs
+            updateInterestMenu();
 
             // Refresh if country is selected
             if (countrySelect && countrySelect.value) {
@@ -1261,77 +1322,104 @@ function setupSettingsHandlers() {
     }
 }
 
-async function fetchNews(countryCode, targetLang = 'original', forcedSource = null) {
+async function fetchNews(countryCode, targetLang = 'original') {
     showLoading();
-    let articles = [];
+    let allArticles = [];
     let fetchError = null;
 
-    try {
-        if (!countryCode && !forcedSource) {
-            articles = await fetchGlobalNews();
-        } else {
-            // Priority sequence: forced, then preferred, then others
-            let sequence = forcedSource ? [forcedSource] : [preferredSource];
+    // Smart interest keywords mapping
+    const INTEREST_KEYWORDS = {
+        'politics': '(politics OR society OR environment OR government OR policy OR climate OR "global warming")',
+        'finance': '(finance OR economy OR trade OR stock OR business OR banking OR markets)',
+        'sports': '(sports OR entertainment OR arts OR movies OR music OR celebrity OR fashion)',
+        'technology': '(technology OR science OR academics OR research OR innovation OR space OR AI)',
+        'health': '(health OR medical OR food OR nutrition OR wellness OR medicine OR disease)',
+        'travel': '(travel OR leisure OR tourism OR vacation OR airlines OR hospitality)'
+    };
 
-            // Add other sources to the sequence if not already present
-            if (!forcedSource) {
-                const others = ['google', 'bing', 'bbc', 'reuters'].filter(s => s !== preferredSource);
-                sequence = sequence.concat(others);
+    try {
+        if (!countryCode) {
+            allArticles = await fetchGlobalNews();
+        } else {
+            const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+            let interestQuery = "";
+
+            if (preferredInterests.length > 0) {
+                const keywords = preferredInterests.map(i => INTEREST_KEYWORDS[i]).filter(k => !!k);
+                if (keywords.length > 0) {
+                    interestQuery = " " + keywords.join(" OR ");
+                }
             }
 
-            let success = false;
-
-            for (const source of sequence) {
+            const fetchPromises = preferredSources.map(async (source) => {
                 try {
                     if (source === 'bing') {
-                        articles = await fetchBingNews(countryCode);
-                        success = true;
+                        // Bing doesn't support complex OR at standard search as easily in basic API
+                        // but we append the interests for better relevance
+                        return await fetchBingNews(countryCode, interestQuery);
                     } else if (source === 'bbc') {
-                        articles = await fetchBBCNews(countryCode);
-                        success = true;
-                    } else if (source === 'google' || (source === 'google_regional')) {
+                        // BBC is RSS based, harder to search but we can filter results
+                        return await fetchBBCNews(countryCode);
+                    } else if (source === 'google') {
                         const info = COUNTRY_LANGUAGES[countryCode];
-                        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
                         if (info) {
                             const cc = countryCode.toUpperCase();
                             let hl = info.lang || 'en';
                             let ceid = `${cc}:${hl}`;
-
-                            // More robust search-based RSS for better regional coverage
-                            const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(countryName)}+news&hl=${hl}&gl=${cc}&ceid=${ceid}`;
-                            console.log(`[Google Regional RSS]: ${rssUrl}`);
-
-                            articles = await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 6000);
-                            if (articles && articles.length > 0) success = true;
+                            const query = `${encodeURIComponent(countryName)}${encodeURIComponent(interestQuery)}`;
+                            const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=${hl}&gl=${cc}&ceid=${ceid}`;
+                            return await fetchFromRss({ name: 'Google News', url: rssUrl, source: 'Google News' }, 6000);
                         }
                     } else if (source === 'reuters') {
-                        articles = await fetchReutersNews(countryCode);
-                        success = (articles && articles.length > 0);
+                        return await fetchReutersNews(countryCode);
                     }
-                    if (success && articles.length > 0) break;
                 } catch (e) {
-                    console.warn(`Source ${source} failed, trying next in sequence...`);
+                    console.warn(`Source ${source} failed:`, e);
+                }
+                return [];
+            });
+
+            const results = await Promise.all(fetchPromises);
+            allArticles = results.flat();
+
+            // Smart Client-side Filtering if interests are selected
+            if (preferredInterests.length > 0) {
+                const filterTerms = preferredInterests.flatMap(i => {
+                    const k = INTEREST_KEYWORDS[i];
+                    return k.replace(/[()]/g, "").split(" OR ").map(t => t.replace(/"/g, "").toLowerCase().trim());
+                });
+
+                // If we have articles, filter them to ensure relevance
+                // but only if we have enough results. If results are sparse, don't over-filter.
+                if (allArticles.length > 10) {
+                    allArticles = allArticles.filter(art => {
+                        const content = (art.title + " " + (art.description || "")).toLowerCase();
+                        return filterTerms.some(term => content.includes(term));
+                    });
                 }
             }
 
             // Final fallback to global if nothing worked
-            if (!success || articles.length === 0) {
-                console.warn("All regional sources failed, falling back to Global Racing...");
-                articles = await fetchGlobalNews();
+            if (allArticles.length === 0) {
+                console.warn("All selected sources/interests failed, falling back to Global Racing...");
+                allArticles = await fetchGlobalNews();
             }
         }
 
-        if (articles.length === 0) {
-            fetchError = "No news headlines found. Please try a different source or region.";
+        if (allArticles.length === 0) {
+            fetchError = "No news headlines found. Please try different sources or regions.";
         } else {
+            // Sort by date (latest first)
+            allArticles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
             const countryLang = (COUNTRY_LANGUAGES[countryCode] && COUNTRY_LANGUAGES[countryCode].lang) || 'en';
             if (targetLang !== 'original') {
-                articles = await Promise.all(articles.map(async (art) => {
+                allArticles = await Promise.all(allArticles.map(async (art) => {
                     const tTitle = await translateText(art.title, targetLang);
                     return { ...art, title: tTitle };
                 }));
             } else if (countryLang !== 'en' && countryCode) {
-                articles = await Promise.all(articles.map(async (art) => {
+                allArticles = await Promise.all(allArticles.map(async (art) => {
                     if (art.source === 'Bing News' || art.source === 'BBC News' || art.source === 'AP News' || art.source === 'The Guardian') {
                         const tTitle = await translateText(art.title, countryLang);
                         return { ...art, title: tTitle };
@@ -1339,12 +1427,12 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
                     return art;
                 }));
             }
-            renderNews(articles);
-            return; // Success!
+            renderNews(allArticles);
+            return;
         }
     } catch (error) {
         console.error("Fetch News Critical Failure:", error);
-        fetchError = "Unable to load news headlines. This usually happens when proxies are temporarily over capacity. Please try again in a few seconds.";
+        fetchError = "Unable to load news headlines. Please try again in a few seconds.";
     }
 
     if (fetchError) {
@@ -1352,7 +1440,84 @@ async function fetchNews(countryCode, targetLang = 'original', forcedSource = nu
     }
 }
 
-function renderNews(articles, isSavedView = false, isBookmarkView = false) {
+function simplifySourceName(source) {
+    if (!source) return '';
+    // Simplify common suffixes and convert to uppercase
+    return source.replace(/\s+News$/i, '')
+        .replace(/\s+Search$/i, '')
+        .replace(/\s+World$/i, '')
+        .toUpperCase();
+}
+
+function updateInterestMenu() {
+    const menu = document.getElementById('interest-menu');
+    if (!menu) return;
+
+    if (preferredInterests.length === 0) {
+        menu.classList.add('hidden');
+        return;
+    }
+
+    menu.classList.remove('hidden');
+    menu.innerHTML = '';
+
+    // Add "All" tab
+    const allTab = document.createElement('div');
+    allTab.className = `interest-tab ${currentActiveInterest === 'all' ? 'active' : ''}`;
+    allTab.textContent = 'All'; // Keep as text
+    allTab.style.color = '#3498db'; // Explicit blue for visibility in all modes
+    allTab.onclick = () => filterNewsByInterest('all');
+    menu.appendChild(allTab);
+
+    preferredInterests.forEach(interest => {
+        const tab = document.createElement('div');
+        tab.className = `interest-tab ${currentActiveInterest === interest ? 'active' : ''}`;
+        tab.textContent = INTEREST_ICONS[interest] || interest;
+        tab.onclick = () => filterNewsByInterest(interest);
+        menu.appendChild(tab);
+    });
+}
+
+function filterNewsByInterest(interest) {
+    currentActiveInterest = interest;
+    updateInterestMenu(); // To update active class
+
+    let viewType = 'home';
+    if (document.body.classList.contains('bookmarks-view-active')) {
+        viewType = 'bookmarks';
+    } else if (document.body.classList.contains('saved-view-active')) {
+        viewType = 'saved';
+    }
+
+    let baseList = allArticlesList;
+    if (viewType === 'bookmarks') baseList = bookmarkedArticles;
+    if (viewType === 'saved') baseList = savedArticles;
+
+    let filtered = baseList;
+    if (interest !== 'all') {
+        const keywords = INTEREST_KEYWORDS[interest] || [];
+        filtered = baseList.filter(art => {
+            const content = (art.title + " " + (art.description || "")).toLowerCase();
+            return keywords.some(kw => content.includes(kw.toLowerCase()));
+        });
+    }
+
+    if (viewType === 'bookmarks') {
+        showBookmarks(filtered);
+    } else if (viewType === 'saved') {
+        showSavedArticles(filtered);
+    } else {
+        renderNews(filtered, false, false, true);
+    }
+}
+
+function renderNews(articles, isSavedView = false, isBookmarkView = false, skipMenuUpdate = false) {
+    if (!isSavedView && !isBookmarkView && !skipMenuUpdate) {
+        allArticlesList = articles;
+        currentActiveInterest = 'all';
+        updateInterestMenu();
+    }
+
     newsContainer.innerHTML = '';
     if (articles.length === 0) {
         showEmpty("No news found.");
@@ -1393,7 +1558,7 @@ function renderNews(articles, isSavedView = false, isBookmarkView = false) {
             <div class="news-content">
                 <div class="news-source">
                     <div class="source-left">
-                        <span>${article.source}</span>
+                        <span>${simplifySourceName(article.source)}</span>
                         <span class="news-date">${date}</span>
                     </div>
                     <button class="bookmark-btn ${isBookmarked ? 'active' : ''}" title="Bookmark">

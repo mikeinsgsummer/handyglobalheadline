@@ -61,6 +61,8 @@
                 </div>
             </section>
 
+            <nav id="interest-menu" class="interest-menu hidden"></nav>
+
             <section id="news-container" class="news-feed">
                 <div class="empty-state">
                     <div class="icon">📰</div>
@@ -132,38 +134,68 @@
             <div class="settings-body">
                 <div class="settings-section">
                     <h4>Preferred News Source</h4>
-                    <div class="settings-options">
-                        <label class="radio-option">
-                            <input type="radio" name="preferred-source" value="google">
-                            <span class="radio-label">Google News</span>
+                    <div class="settings-options sources-grid">
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-source" value="google">
+                            <span class="radio-label">Google</span>
                         </label>
-                        <label class="radio-option">
-                            <input type="radio" name="preferred-source" value="bing">
-                            <span class="radio-label">Bing News</span>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-source" value="bing">
+                            <span class="radio-label">Bing</span>
                         </label>
-                        <label class="radio-option">
-                            <input type="radio" name="preferred-source" value="bbc">
-                            <span class="radio-label">BBC News</span>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-source" value="bbc">
+                            <span class="radio-label">BBC</span>
                         </label>
-                        <label class="radio-option">
-                            <input type="radio" name="preferred-source" value="reuters">
-                            <span class="radio-label">Reuters News</span>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-source" value="reuters">
+                            <span class="radio-label">Reuters</span>
                         </label>
-                    </div>
-                    <div class="settings-group"
-                        style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                        <label class="radio-option" style="justify-content: space-between; width: 100%;">
-                            <span class="radio-label">Open in Standalone Safari</span>
-                            <input type="checkbox" id="external-safari-toggle" style="width: auto;">
-                        </label>
-                        <p class="settings-hint">Full browsers features e.g. translations.</p>
                     </div>
                 </div>
-                <div class="settings-actions">
-                    <button id="save-settings" class="text-btn primary">Save & Close</button>
+
+                <div class="settings-section">
+                    <h4>Interests</h4>
+                    <div class="settings-options interests-grid">
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-interest" value="politics">
+                            <span class="radio-label">Politics / Society / Environment</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-interest" value="finance">
+                            <span class="radio-label">Finance / Economic / Trade</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-interest" value="sports">
+                            <span class="radio-label">Sports / Entertainment / Arts</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-interest" value="technology">
+                            <span class="radio-label">Technology / Science / Academics</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-interest" value="health">
+                            <span class="radio-label">Health / Medical / Food</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" name="preferred-interest" value="travel">
+                            <span class="radio-label">Travel / Hobbies / Leisures</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-toggle">
+                        <span class="radio-label">Open News in Browser</span>
+                        <input type="checkbox" id="external-safari-toggle">
+                    </label>
+                    <p class="settings-hint">Full browsers features e.g. translations.</p>
                 </div>
             </div>
+            <div class="settings-actions">
+                <button id="save-settings" class="text-btn primary">Save & Close</button>
+            </div>
         </div>
+    </div>
     </div>
 
     <script src="script.js"></script>
