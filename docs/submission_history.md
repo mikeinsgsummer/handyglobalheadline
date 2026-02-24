@@ -21,3 +21,8 @@
 | 2026-02-16 16:00:00 | `8178d98`        | Optimize Home UI for mobile with compact header and unified control card            |
 | 2026-02-16 18:30:00 | `5861e75`        | Implement strict news source fallback sequences (Bing-BBC-Google, etc.)            |
 | 2026-02-16 19:10:00 | `901af46`        | Implement hybrid fetching strategy (Native RSS + Proxy Reader) and fix startup hang |
+| 2026-02-19 14:00:00 | `a6dc8cb`        | Implement Bookmarks feature with robust desktop visibility and SVG stars           |
+| 2026-02-19 14:30:00 | `db57099`        | v2.0: Major upgrade - Reuters/Google integration and simultaneous RSS racing         |
+| 2026-02-19 15:00:00 | `191202d`        | v2.1: Native browser translation support and settings UI refinements               |
+| 2026-02-25 00:00:00 | `4060f14`        | Enhance UI with Interest Menu Bar, Simplified Source Names, and Bookmark bug fixes |
+| 2026-02-25 07:22:00 | `30a74d5`        | Refine App Settings UI for better spacing, readability, and spacious mobile layout |
