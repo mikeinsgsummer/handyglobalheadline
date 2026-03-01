@@ -26,3 +26,5 @@
 | 2026-02-19 15:00:00 | `191202d`        | v2.1: Native browser translation support and settings UI refinements               |
 | 2026-02-25 00:00:00 | `4060f14`        | Enhance UI with Interest Menu Bar, Simplified Source Names, and Bookmark bug fixes |
 | 2026-02-25 07:22:00 | `30a74d5`        | Refine App Settings UI for better spacing, readability, and spacious mobile layout |
+| 2026-02-25 07:51:00 | `09d04a5`        | Fix Interest Categories menu visibility and optimize App Settings responsiveness   |
+| 2026-03-02 00:05:00 | `v2.2`           | v2.2: Implement Smart Interest Fetching (24h/7d adaptive), individual category loops, and animated single-row header layout with Sun/Moon transition |
