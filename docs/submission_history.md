@@ -28,3 +28,4 @@
 | 2026-02-25 07:22:00 | `30a74d5`        | Refine App Settings UI for better spacing, readability, and spacious mobile layout |
 | 2026-02-25 07:51:00 | `09d04a5`        | Fix Interest Categories menu visibility and optimize App Settings responsiveness   |
 | 2026-03-02 00:05:00 | `v2.2`           | v2.2: Implement Smart Interest Fetching (24h/7d adaptive), individual category loops, and animated single-row header layout with Sun/Moon transition |
+| 2026-03-13 22:40:00 | `v2.3`           | v2.3: Fix Bookmark Interest Filtering (metadata preservation), refine management headers (hide animation, add font/theme controls), and streamline navigation labels |

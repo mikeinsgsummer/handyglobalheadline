@@ -1045,6 +1045,8 @@ mark.news-highlight {
 /* Saved View UI Cleanup */
 .saved-view-active .globe-icon,
 .bookmarks-view-active .globe-icon,
+.saved-view-active .day-night-cycle,
+.bookmarks-view-active .day-night-cycle,
 .saved-view-active .subtitle,
 .bookmarks-view-active .subtitle,
 .saved-view-active .controls,
