@@ -71,7 +71,7 @@ let readerDarkMode = localStorage.getItem('readerDarkMode') === 'true';
 let isReaderMode = true;
 let savedArticles = JSON.parse(localStorage.getItem('savedArticles')) || [];
 let bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
-let preferredSources = JSON.parse(localStorage.getItem('preferredSources')) || ['google'];
+let preferredSources = ['google', 'bing', 'bbc', 'reuters'];
 let preferredInterests = JSON.parse(localStorage.getItem('preferredInterests')) || [];
 let openInExternalSafari = localStorage.getItem('openInExternalSafari') === 'true';
 let allArticlesList = []; // Store fetched headlines for filtering
@@ -1346,10 +1346,6 @@ function setupSettingsHandlers() {
 
     if (settingsBtn) {
         settingsBtn.onclick = () => {
-            // Set source checkboxes
-            sourceCheckboxes.forEach(checkbox => {
-                checkbox.checked = preferredSources.includes(checkbox.value);
-            });
             // Set interest checkboxes
             interestCheckboxes.forEach(checkbox => {
                 checkbox.checked = preferredInterests.includes(checkbox.value);
@@ -1366,15 +1362,6 @@ function setupSettingsHandlers() {
 
     if (saveSettings) {
         saveSettings.onclick = () => {
-            const selectedSources = Array.from(sourceCheckboxes)
-                .filter(c => c.checked)
-                .map(c => c.value);
-
-            if (selectedSources.length > 0) {
-                preferredSources = selectedSources;
-                localStorage.setItem('preferredSources', JSON.stringify(preferredSources));
-            }
-
             const selectedInterests = Array.from(interestCheckboxes)
                 .filter(c => c.checked)
                 .map(c => c.value);

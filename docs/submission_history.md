@@ -29,3 +29,4 @@
 | 2026-02-25 07:51:00 | `09d04a5`        | Fix Interest Categories menu visibility and optimize App Settings responsiveness   |
 | 2026-03-02 00:05:00 | `v2.2`           | v2.2: Implement Smart Interest Fetching (24h/7d adaptive), individual category loops, and animated single-row header layout with Sun/Moon transition |
 | 2026-03-13 22:40:00 | `v2.3`           | v2.3: Fix Bookmark Interest Filtering (metadata preservation), refine management headers (hide animation, add font/theme controls), and streamline navigation labels |
+| 2026-03-13 22:58:00 | `v2.3.1`         | v2.3.1: Settings simplification (hide Preferred News Feed, default to all feeds) and Home screen vertical spacing optimization |
