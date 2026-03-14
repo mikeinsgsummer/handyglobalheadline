@@ -620,20 +620,15 @@ function createActionBanner(title, showDeleteAll, deleteAction) {
     const banner = document.createElement('div');
     banner.className = 'info-banner saved-header';
 
-    const deleteAllHtml = showDeleteAll ?
-        `<button onclick="${deleteAction}" class="icon-btn-text delete-all" title="Clear All">🗑️ Clear All</button>` : '';
+    const deleteAllClass = showDeleteAll ? '' : 'visibility-hidden';
 
     banner.innerHTML = `
-        <div class="banner-left">
-            <button onclick="refreshNews()" class="icon-btn-text">← Home</button>
-        </div>
+        <button onclick="refreshNews()" class="icon-btn-text" title="Home">← Home</button>
         <div class="banner-title">${title}</div>
-        <div class="banner-right">
-            <button onclick="updateFontSize(-2)" class="icon-btn-text" title="Decrease Font">A-</button>
-            <button onclick="updateFontSize(2)" class="icon-btn-text" title="Increase Font">A+</button>
-            <button onclick="toggleDarkMode()" class="icon-btn-text" title="Toggle Theme">🌓</button>
-            ${deleteAllHtml}
-        </div>
+        <button onclick="updateFontSize(-2)" class="icon-btn-text" title="Decrease Font">A-</button>
+        <button onclick="updateFontSize(2)" class="icon-btn-text" title="Increase Font">A+</button>
+        <button onclick="toggleDarkMode()" class="icon-btn-text" title="Toggle Theme">🌓</button>
+        <button onclick="${deleteAction}" class="icon-btn-text delete-all ${deleteAllClass}" title="Clear All">🗑️ Clear All</button>
     `;
     return banner;
 }
