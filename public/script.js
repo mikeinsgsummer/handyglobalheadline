@@ -652,14 +652,14 @@ function showSavedArticles(articlesOrEvent = savedArticles) {
 
     if (articles.length === 0) {
         showEmpty(articles === savedArticles ? "You haven't saved any articles yet." : "No matching saved articles found.");
-        const backBanner = createActionBanner('Saved Articles', false);
+        const backBanner = createActionBanner('📥', false);
         newsContainer.prepend(backBanner);
         return;
     }
 
     renderNews(articles.map(a => ({ ...a, source: 'Saved: ' + a.source })), true, false, true);
 
-    const backBanner = createActionBanner('Saved Articles', true, 'deleteAllSavedArticles()');
+    const backBanner = createActionBanner('📥', true, 'deleteAllSavedArticles()');
     newsContainer.prepend(backBanner);
 }
 
@@ -707,7 +707,7 @@ function showBookmarks(articlesOrEvent = bookmarkedArticles) {
     document.body.classList.remove('saved-view-active');
     document.body.classList.add('bookmarks-view-active');
 
-    const bookmarkTitle = `Bookmarks <svg viewBox="0 0 24 24" fill="currentColor" style="width:1.2rem; height:1.2rem; display:inline-block; vertical-align:middle; margin-left:5px; color:#facc15;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+    const bookmarkTitle = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:1.2rem; height:1.2rem; display:inline-block; vertical-align:middle; color:#facc15;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
 
     if (articles.length === 0) {
         showEmpty(articles === bookmarkedArticles ? "You haven't bookmarked any headlines yet." : "No matching bookmarks found.");
